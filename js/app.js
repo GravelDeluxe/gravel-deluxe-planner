@@ -6,14 +6,16 @@ import { searchPlace } from './search.js';
 import { listRoutes, saveRoute, deleteRoute } from './storage.js';
 import { toGpx, escapeXml } from './gpx.js';
 
-const map = L.map('map').setView(MAP_START, MAP_START_ZOOM);
+const map = L.map('map', { zoomControl: false }).setView(MAP_START, MAP_START_ZOOM);
 L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
+L.control.zoom({ position: 'topright' }).addTo(map);
 const routeLayer = L.polyline([], { color: '#c2410c', weight: 4 }).addTo(map);
 
 const el = (id) => document.getElementById(id);
 const setStatus = (msg) => { el('status').textContent = msg; };
 
 let requestSeq = 0;
+let searchSeq = 0;
 
 const state = {
   mode: 'manual',     // 'manual' | 'loop'
@@ -175,6 +177,7 @@ el('generateLoop').addEventListener('click', async () => {
     );
     if (seq !== requestSeq) return;
     state.candidates = candidates;
+    // selectCandidate bumpt requestSeq und setzt busy=false — der Guard unten greift danach bewusst nicht mehr.
     selectCandidate(0);
   } catch (err) {
     if (seq !== requestSeq) return;
@@ -187,24 +190,38 @@ el('generateLoop').addEventListener('click', async () => {
 async function runSearch() {
   const q = el('searchInput').value.trim();
   if (!q) return;
+  const seq = ++searchSeq;
+  const ul = el('searchResults');
   setStatus('Suche …');
   try {
     const results = await searchPlace(q);
-    const ul = el('searchResults');
-    ul.hidden = results.length === 0;
-    ul.innerHTML = results
-      .map((r, i) => `<li><button type="button" data-i="${i}">${escapeXml(r.name)}</button></li>`)
-      .join('');
-    ul.onclick = (e) => {
-      const btn = e.target.closest('button[data-i]');
-      if (!btn) return;
-      const r = results[Number(btn.dataset.i)];
-      map.setView([r.lat, r.lon], 13);
+    if (seq !== searchSeq) return;
+    if (results.length === 0) {
       ul.hidden = true;
-    };
+      ul.innerHTML = '';
+    } else {
+      ul.hidden = false;
+      ul.innerHTML = results
+        .map((r, i) => `<li><button type="button" data-i="${i}">${escapeXml(r.name)}</button></li>`)
+        .join('');
+      ul.onclick = (e) => {
+        const btn = e.target.closest('button[data-i]');
+        if (!btn) return;
+        const r = results[Number(btn.dataset.i)];
+        map.setView([r.lat, r.lon], 13);
+        ul.hidden = true;
+      };
+    }
     setStatus(results.length ? '' : 'Nichts gefunden.');
   } catch (err) {
-    setStatus(err.message);
+    if (seq !== searchSeq) return;
+    ul.hidden = true;
+    ul.innerHTML = '';
+    setStatus(
+      err.message.startsWith('Suche fehlgeschlagen')
+        ? err.message
+        : `Suche fehlgeschlagen: ${err.message}`,
+    );
   }
 }
 el('searchButton').addEventListener('click', runSearch);
@@ -226,15 +243,20 @@ function renderSavedRoutes() {
 
 el('saveButton').addEventListener('click', () => {
   if (!state.route) return setStatus('Keine Route zum Speichern.');
-  const name = prompt('Name der Route:', 'Gravel-Runde');
+  const name = prompt('Name der Route:', 'Gravel-Runde')?.trim();
   if (!name) return;
-  saveRoute({
-    name,
-    waypoints: state.waypoints,
-    coords: state.route.coords,
-    distanceM: state.route.distanceM,
-    ascendM: state.route.ascendM,
-  });
+  try {
+    saveRoute({
+      name,
+      waypoints: state.waypoints,
+      coords: state.route.coords,
+      distanceM: state.route.distanceM,
+      ascendM: state.route.ascendM,
+    });
+  } catch {
+    setStatus('Speichern fehlgeschlagen (Speicher voll?).');
+    return;
+  }
   renderSavedRoutes();
   setStatus('Gespeichert.');
 });

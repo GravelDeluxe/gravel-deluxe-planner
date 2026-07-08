@@ -66,3 +66,11 @@ test('fetchRouteWithFallback: non-profile error is not swallowed', async () => {
     /503/,
   );
 });
+
+test('fetchRouteWithFallback: propagates a rejected fetch (network error), no trekking retry', async () => {
+  const fetchImpl = async () => { throw new Error('Failed to fetch'); };
+  await assert.rejects(
+    fetchRouteWithFallback([[50.1, 8.6], [50.2, 8.7]], { fetchImpl }),
+    /Failed to fetch/,
+  );
+});

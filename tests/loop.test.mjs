@@ -52,3 +52,27 @@ test('all candidates failing throws German error', async () => {
     /Keine Route gefunden/,
   );
 });
+
+test('mixed candidate set sorts in-range candidates first', async () => {
+  // First candidate (calls 0..maxIter-1) never converges: always out of range.
+  // Remaining candidates converge immediately to the exact ring circumference.
+  let calls = 0;
+  const maxIter = 5;
+  const mixedRouteFn = async (waypoints) => {
+    const i = calls++;
+    if (i < maxIter) {
+      return { distanceM: 999999, coords: [], ascendM: 0 };
+    }
+    const first = waypoints[0];
+    const distanceM = 2 * Math.PI * haversineM(first, waypoints[1]) * 1.3;
+    return { distanceM, coords: [], ascendM: 0 };
+  };
+  const cands = await generateCandidates(
+    [50, 8],
+    { minKm: 30, maxKm: 50, mode: 'circle', count: 3, maxIter },
+    mixedRouteFn,
+  );
+  assert.equal(cands.length, 3);
+  assert.equal(cands[0].inRange, true);
+  assert.equal(cands[cands.length - 1].inRange, false);
+});
