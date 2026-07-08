@@ -9,6 +9,8 @@ const routeLayer = L.polyline([], { color: '#c2410c', weight: 4 }).addTo(map);
 const el = (id) => document.getElementById(id);
 const setStatus = (msg) => { el('status').textContent = msg; };
 
+let requestSeq = 0;
+
 const state = {
   mode: 'manual',     // 'manual' | 'loop'
   waypoints: [],      // [[lat, lon], ...]
@@ -52,27 +54,36 @@ function renderMarkers() {
 async function reroute() {
   renderMarkers();
   if (state.waypoints.length < 2) {
+    requestSeq++;
     state.route = null;
     renderRoute();
     return;
   }
+  const seq = ++requestSeq;
+  const waypoints = [...state.waypoints];
   setStatus('Route wird berechnet …');
   state.busy = true;
   try {
-    state.route = await fetchRouteWithFallback(state.waypoints);
+    const route = await fetchRouteWithFallback(waypoints);
+    if (seq !== requestSeq) return;
+    state.route = route;
     setStatus(
       state.route.profile === 'gravel'
         ? ''
         : 'Hinweis: Gravel-Profil nicht verfügbar, Trekking-Profil verwendet.',
     );
   } catch (err) {
+    if (seq !== requestSeq) return;
+    state.route = null;
     setStatus(`Routing fehlgeschlagen: ${err.message}`);
   }
+  if (seq !== requestSeq) return;
   state.busy = false;
   renderRoute();
 }
 
 function clearAll() {
+  requestSeq++;
   state.waypoints = [];
   state.route = null;
   renderMarkers();
