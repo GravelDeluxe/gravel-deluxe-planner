@@ -90,8 +90,10 @@ function clearAll() {
   state.busy = false;
   state.waypoints = [];
   state.route = null;
+  state.candidates = [];
   renderMarkers();
   renderRoute();
+  el('suggestions').innerHTML = '';
   setStatus('');
 }
 
@@ -148,6 +150,7 @@ el('suggestions').addEventListener('click', (e) => {
 });
 
 el('generateLoop').addEventListener('click', async () => {
+  if (state.busy) return;
   const start = state.waypoints[0];
   const minKm = Number(el('loopKmMin').value);
   const maxKm = Number(el('loopKmMax').value);
@@ -156,18 +159,23 @@ el('generateLoop').addEventListener('click', async () => {
   if (!(minKm >= 5 && maxKm <= 300 && minKm < maxKm)) {
     return setStatus('Ungültiger Distanzbereich (5–300 km, min < max).');
   }
+  const seq = ++requestSeq;
   state.busy = true;
   setStatus('Vorschläge werden erzeugt … (kann eine Minute dauern)');
   try {
-    state.candidates = await generateCandidates(
+    const candidates = await generateCandidates(
       start,
       { minKm, maxKm, mode, baseBearingDeg: Math.random() * 360 },
       (wps) => fetchRouteWithFallback(wps),
     );
+    if (seq !== requestSeq) return;
+    state.candidates = candidates;
     selectCandidate(0);
   } catch (err) {
+    if (seq !== requestSeq) return;
     setStatus(`Vorschläge fehlgeschlagen: ${err.message}`);
   }
+  if (seq !== requestSeq) return;
   state.busy = false;
 });
 
