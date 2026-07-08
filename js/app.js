@@ -2,6 +2,9 @@ import { TILE_URL, TILE_ATTRIBUTION, MAP_START, MAP_START_ZOOM } from './config.
 import { fetchRouteWithFallback } from './routing.js';
 import { profilePoints, svgPath } from './elevation.js';
 import { generateCandidates } from './loop.js';
+import { searchPlace } from './search.js';
+import { listRoutes, saveRoute, deleteRoute } from './storage.js';
+import { toGpx, escapeXml } from './gpx.js';
 
 const map = L.map('map').setView(MAP_START, MAP_START_ZOOM);
 L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
@@ -179,6 +182,107 @@ el('generateLoop').addEventListener('click', async () => {
   }
   if (seq !== requestSeq) return;
   state.busy = false;
+});
+
+async function runSearch() {
+  const q = el('searchInput').value.trim();
+  if (!q) return;
+  setStatus('Suche …');
+  try {
+    const results = await searchPlace(q);
+    const ul = el('searchResults');
+    ul.hidden = results.length === 0;
+    ul.innerHTML = results
+      .map((r, i) => `<li><button type="button" data-i="${i}">${escapeXml(r.name)}</button></li>`)
+      .join('');
+    ul.onclick = (e) => {
+      const btn = e.target.closest('button[data-i]');
+      if (!btn) return;
+      const r = results[Number(btn.dataset.i)];
+      map.setView([r.lat, r.lon], 13);
+      ul.hidden = true;
+    };
+    setStatus(results.length ? '' : 'Nichts gefunden.');
+  } catch (err) {
+    setStatus(err.message);
+  }
+}
+el('searchButton').addEventListener('click', runSearch);
+el('searchInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') runSearch();
+});
+
+function renderSavedRoutes() {
+  const routes = listRoutes();
+  el('savedRoutes').innerHTML = routes
+    .map(
+      (r) => `<div class="saved-route" data-id="${r.id}">
+        <button type="button" class="load">${escapeXml(r.name)} (${(r.distanceM / 1000).toFixed(1)} km)</button>
+        <button type="button" class="remove" aria-label="Route löschen">×</button>
+      </div>`,
+    )
+    .join('');
+}
+
+el('saveButton').addEventListener('click', () => {
+  if (!state.route) return setStatus('Keine Route zum Speichern.');
+  const name = prompt('Name der Route:', 'Gravel-Runde');
+  if (!name) return;
+  saveRoute({
+    name,
+    waypoints: state.waypoints,
+    coords: state.route.coords,
+    distanceM: state.route.distanceM,
+    ascendM: state.route.ascendM,
+  });
+  renderSavedRoutes();
+  setStatus('Gespeichert.');
+});
+
+el('savedRoutes').addEventListener('click', (e) => {
+  const row = e.target.closest('.saved-route');
+  if (!row) return;
+  if (e.target.classList.contains('remove')) {
+    deleteRoute(row.dataset.id);
+    renderSavedRoutes();
+    return;
+  }
+  const route = listRoutes().find((r) => r.id === row.dataset.id);
+  if (!route) return;
+  requestSeq++; // invalidate any in-flight reroute/generation; this load owns the state now
+  state.busy = false;
+  state.waypoints = route.waypoints;
+  state.route = {
+    coords: route.coords,
+    distanceM: route.distanceM,
+    ascendM: route.ascendM,
+    profile: 'gravel',
+  };
+  renderMarkers();
+  renderRoute();
+  map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+  setStatus('');
+});
+
+renderSavedRoutes();
+
+el('reverseButton').addEventListener('click', () => {
+  if (state.busy) return;
+  if (state.waypoints.length < 2) return setStatus('Keine Route zum Umkehren.');
+  state.waypoints.reverse();
+  reroute();
+});
+
+el('exportButton').addEventListener('click', () => {
+  if (!state.route) return setStatus('Keine Route zum Exportieren.');
+  const blob = new Blob([toGpx('Gravel-Route', state.route.coords)], {
+    type: 'application/gpx+xml',
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'route.gpx';
+  a.click();
+  URL.revokeObjectURL(a.href);
 });
 
 export { state, map, routeLayer, el, setStatus, reroute, renderMarkers, renderRoute, clearAll };
