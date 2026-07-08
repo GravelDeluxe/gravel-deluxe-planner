@@ -135,6 +135,8 @@ function renderSuggestions(activeIndex = -1) {
 function selectCandidate(i) {
   const c = state.candidates[i];
   if (!c) return;
+  requestSeq++; // invalidate any in-flight reroute; this click owns the state now
+  state.busy = false;
   state.route = c.route;
   state.waypoints = [...c.waypoints];
   renderMarkers();
