@@ -1,6 +1,7 @@
 import { TILE_URL, TILE_ATTRIBUTION, MAP_START, MAP_START_ZOOM } from './config.js';
 import { fetchRouteWithFallback } from './routing.js';
 import { profilePoints, svgPath } from './elevation.js';
+import { generateCandidates } from './loop.js';
 
 const map = L.map('map').setView(MAP_START, MAP_START_ZOOM);
 L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
@@ -118,5 +119,56 @@ document.querySelectorAll('input[name="mode"]').forEach((radio) =>
     if (state.mode === 'loop') setStatus('Startpunkt auf die Karte klicken, dann Runde erzeugen.');
   }),
 );
+
+function renderSuggestions(activeIndex = -1) {
+  el('suggestions').innerHTML = state.candidates
+    .map(
+      (c, i) => `<button type="button" class="suggestion${i === activeIndex ? ' active' : ''}" data-i="${i}">
+        ${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.inRange ? '' : ' (außerhalb Bereich)'}
+      </button>`,
+    )
+    .join('');
+}
+
+function selectCandidate(i) {
+  const c = state.candidates[i];
+  if (!c) return;
+  state.route = c.route;
+  state.waypoints = [...c.waypoints];
+  renderMarkers();
+  renderRoute();
+  renderSuggestions(i);
+  map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+  setStatus(c.inRange ? '' : `Außerhalb des Bereichs: ${(c.route.distanceM / 1000).toFixed(1)} km.`);
+}
+
+el('suggestions').addEventListener('click', (e) => {
+  const btn = e.target.closest('.suggestion');
+  if (btn) selectCandidate(Number(btn.dataset.i));
+});
+
+el('generateLoop').addEventListener('click', async () => {
+  const start = state.waypoints[0];
+  const minKm = Number(el('loopKmMin').value);
+  const maxKm = Number(el('loopKmMax').value);
+  const mode = document.querySelector('input[name="tripMode"]:checked').value;
+  if (!start) return setStatus('Zuerst Startpunkt auf die Karte klicken.');
+  if (!(minKm >= 5 && maxKm <= 300 && minKm < maxKm)) {
+    return setStatus('Ungültiger Distanzbereich (5–300 km, min < max).');
+  }
+  state.busy = true;
+  setStatus('Vorschläge werden erzeugt … (kann eine Minute dauern)');
+  try {
+    state.candidates = await generateCandidates(
+      start,
+      { minKm, maxKm, mode, baseBearingDeg: Math.random() * 360 },
+      (wps) => fetchRouteWithFallback(wps),
+    );
+    selectCandidate(0);
+  } catch (err) {
+    setStatus(`Vorschläge fehlgeschlagen: ${err.message}`);
+  }
+  state.busy = false;
+});
 
 export { state, map, routeLayer, el, setStatus, reroute, renderMarkers, renderRoute, clearAll };
