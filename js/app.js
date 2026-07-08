@@ -17,7 +17,7 @@ const state = {
   route: null,        // { coords, distanceM, ascendM, profile }
   candidates: [],     // Vorschläge aus generateCandidates (Task 11)
   markers: [],
-  busy: false,
+  busy: false,        // gates nur Map-Klicks; Korrektheit sichert requestSeq
 };
 
 function renderStats() {
@@ -55,8 +55,10 @@ async function reroute() {
   renderMarkers();
   if (state.waypoints.length < 2) {
     requestSeq++;
+    state.busy = false;
     state.route = null;
     renderRoute();
+    setStatus('');
     return;
   }
   const seq = ++requestSeq;
@@ -84,6 +86,7 @@ async function reroute() {
 
 function clearAll() {
   requestSeq++;
+  state.busy = false;
   state.waypoints = [];
   state.route = null;
   renderMarkers();
