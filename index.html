@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gravel Planner</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="map" aria-label="Karte"></div>
+
+    <aside class="panel" aria-label="Planung">
+      <h1>Gravel Planner</h1>
+
+      <div class="search-row">
+        <input id="searchInput" type="search" placeholder="Ort suchen …" aria-label="Ort suchen" />
+        <button id="searchButton" type="button">Suchen</button>
+      </div>
+      <ul id="searchResults" hidden></ul>
+
+      <div class="mode-row" role="radiogroup" aria-label="Planungsmodus">
+        <label><input type="radio" name="mode" value="manual" checked /> Manuell</label>
+        <label><input type="radio" name="mode" value="loop" /> Runde</label>
+      </div>
+
+      <div id="loopControls" hidden>
+        <div class="mode-row" role="radiogroup" aria-label="Streckentyp">
+          <label><input type="radio" name="tripMode" value="circle" checked /> Runde</label>
+          <label><input type="radio" name="tripMode" value="oneway" /> Einfache Strecke</label>
+        </div>
+        <label for="loopKmMin">Distanzbereich (km)</label>
+        <div class="search-row">
+          <input id="loopKmMin" type="number" min="5" max="300" value="30" aria-label="Minimum km" />
+          <input id="loopKmMax" type="number" min="5" max="300" value="50" aria-label="Maximum km" />
+          <button id="generateLoop" type="button">Vorschläge</button>
+        </div>
+        <div id="suggestions" aria-label="Routen-Vorschläge"></div>
+      </div>
+
+      <div class="action-row">
+        <button id="undoButton" type="button">Zurück</button>
+        <button id="clearButton" type="button">Löschen</button>
+        <button id="reverseButton" type="button">Umkehren</button>
+        <button id="saveButton" type="button">Speichern</button>
+        <button id="exportButton" type="button">GPX</button>
+      </div>
+
+      <div id="savedRoutes" aria-label="Gespeicherte Routen"></div>
+
+      <p id="status" role="status"></p>
+    </aside>
+
+    <footer class="statsbar" aria-label="Streckendaten">
+      <div><strong id="statDistance">0 km</strong><span>Distanz</span></div>
+      <div><strong id="statAscent">0 hm</strong><span>Anstieg</span></div>
+      <svg id="profile" viewBox="0 0 400 80" preserveAspectRatio="none" aria-label="Höhenprofil"></svg>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

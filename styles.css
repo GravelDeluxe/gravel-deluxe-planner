@@ -1,0 +1,59 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
+#map { position: absolute; inset: 0; }
+
+.panel {
+  position: absolute; top: 12px; left: 12px; z-index: 1000;
+  width: 280px; max-height: calc(100% - 120px); overflow-y: auto;
+  background: rgba(255, 255, 255, 0.95); border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25); padding: 14px;
+}
+.panel h1 { font-size: 1.1rem; margin: 0 0 10px; }
+.panel label { font-size: 0.85rem; }
+
+.search-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.search-row input { flex: 1; min-width: 0; padding: 6px 8px; }
+#searchResults { list-style: none; margin: 0 0 8px; padding: 0; }
+#searchResults button {
+  display: block; width: 100%; text-align: left; padding: 6px 8px;
+  border: none; background: #f1f5f9; cursor: pointer; font-size: 0.8rem;
+  margin-bottom: 2px; border-radius: 4px;
+}
+#searchResults button:hover { background: #e2e8f0; }
+
+.mode-row { display: flex; gap: 12px; margin-bottom: 8px; font-size: 0.9rem; }
+#loopControls { margin-bottom: 8px; }
+
+.action-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.action-row button, .search-row button, #generateLoop {
+  padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;
+  background: #fff; cursor: pointer; font-size: 0.85rem;
+}
+.action-row button:hover, .search-row button:hover { background: #f8fafc; }
+
+#suggestions { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.suggestion {
+  text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px;
+  background: #fff; cursor: pointer; font-size: 0.85rem;
+}
+.suggestion.active { border-color: #c2410c; background: #fff7ed; }
+
+.saved-route { display: flex; gap: 4px; margin-bottom: 4px; }
+.saved-route .load { flex: 1; text-align: left; }
+.saved-route button {
+  padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px;
+  background: #fff; cursor: pointer; font-size: 0.8rem;
+}
+
+#status { font-size: 0.8rem; color: #b45309; min-height: 1.2em; margin: 4px 0 0; }
+
+.statsbar {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; align-items: center; gap: 18px;
+  background: rgba(255, 255, 255, 0.95); border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25); padding: 10px 16px;
+}
+.statsbar div { display: flex; flex-direction: column; align-items: center; }
+.statsbar strong { font-size: 1rem; }
+.statsbar span { font-size: 0.7rem; color: #64748b; }
+#profile { width: 260px; height: 60px; background: #f8fafc; border-radius: 6px; }
