@@ -11,6 +11,34 @@ export function profilePoints(coords) {
   return pts;
 }
 
+// Summe der positiven Höhen-Deltas (coords: [[lat, lon, ele], ...]).
+export function ascentM(coords) {
+  let gain = 0;
+  for (let i = 1; i < coords.length; i++) {
+    const d = (coords[i][2] ?? 0) - (coords[i - 1][2] ?? 0);
+    if (d > 0) gain += d;
+  }
+  return gain;
+}
+
+// Höhen mit gleitendem Mittel (Fenster ±window) glätten, lat/lon bleiben.
+// Nötig für ORS: dessen SRTM-Höhen haben Spikes (einzelne 300-m-Sprünge, 0-Werte),
+// die den roh summierten Anstieg vervielfachen.
+export function smoothElevations(coords, window = 8) {
+  const ele = coords.map((c) => c[2] ?? 0);
+  return coords.map((c, i) => {
+    let sum = 0;
+    let n = 0;
+    for (let k = i - window; k <= i + window; k++) {
+      if (k >= 0 && k < ele.length) {
+        sum += ele[k];
+        n++;
+      }
+    }
+    return [c[0], c[1], sum / n];
+  });
+}
+
 export function svgPath(points, width, height, pad = 2) {
   if (points.length < 2) return '';
   const maxD = points[points.length - 1].d || 1;

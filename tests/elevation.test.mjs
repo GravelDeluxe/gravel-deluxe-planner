@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { profilePoints, svgPath } from '../js/elevation.js';
+import { profilePoints, svgPath, smoothElevations, ascentM } from '../js/elevation.js';
 
 test('profilePoints: cumulative distance grows, elevation carried over', () => {
   const pts = profilePoints([[50, 8, 100], [50.009, 8, 120], [50.018, 8, 90]]);
@@ -26,4 +26,24 @@ test('svgPath: starts with M, ends within canvas, min ele at bottom', () => {
 test('svgPath: fewer than two points gives empty string', () => {
   assert.equal(svgPath([], 400, 80), '');
   assert.equal(svgPath([{ d: 0, ele: 1 }], 400, 80), '');
+});
+
+test('ascentM: sums only positive elevation deltas', () => {
+  assert.equal(ascentM([[0, 0, 100], [0, 0, 130], [0, 0, 110], [0, 0, 150]]), 70);
+});
+
+test('smoothElevations: keeps lat/lon, averages out an isolated spike', () => {
+  // Flat 100 m with one 400 m spike — raw ascent 300, smoothed must be far less.
+  const coords = [];
+  for (let i = 0; i < 21; i++) coords.push([50 + i * 0.001, 8, i === 10 ? 400 : 100]);
+  const sm = smoothElevations(coords, 5);
+  assert.equal(sm.length, coords.length);
+  assert.deepEqual([sm[0][0], sm[0][1]], [50, 8]); // lat/lon untouched
+  assert.ok(ascentM(coords) >= 300, `raw ${ascentM(coords)}`);
+  assert.ok(ascentM(sm) < 120, `smoothed still spiky: ${ascentM(sm)}`);
+});
+
+test('smoothElevations: constant elevation stays constant (no phantom gain)', () => {
+  const coords = Array.from({ length: 30 }, (_, i) => [50 + i * 0.001, 8, 200]);
+  assert.equal(ascentM(smoothElevations(coords, 8)), 0);
 });

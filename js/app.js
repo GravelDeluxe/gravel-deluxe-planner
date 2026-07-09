@@ -8,8 +8,25 @@ import { listRoutes, saveRoute, deleteRoute } from './storage.js';
 import { toGpx, escapeXml } from './gpx.js';
 
 const map = L.map('map', { zoomControl: false }).setView(MAP_START, MAP_START_ZOOM);
-L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
+const tileLayer = L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
 L.control.zoom({ position: 'topright' }).addTo(map);
+
+// CyclOSM (Community-Server) droppt bei Burst nach großen Sprüngen einzelne
+// Kacheln; Leaflet lässt sie dann grau. Fehlerhafte Kachel bis 2× neu anfordern.
+tileLayer.on('tileerror', (e) => {
+  const t = e.tile;
+  const tries = Number(t.dataset.retry || 0);
+  if (tries >= 2) return;
+  t.dataset.retry = tries + 1;
+  const src = t.src;
+  setTimeout(() => { t.src = src; }, 400 * (tries + 1));
+});
+
+// Nach einem programmatischen Sprung (Suche/fitBounds) Kacheln neu ziehen, damit
+// nicht angeforderte/gestallte Kacheln nicht bis zur nächsten Interaktion grau bleiben.
+function refreshTilesSoon() {
+  setTimeout(() => tileLayer.redraw(), 400);
+}
 const routeLayer = L.polyline([], { color: '#c2410c', weight: 4 }).addTo(map);
 
 const el = (id) => document.getElementById(id);
@@ -149,6 +166,7 @@ function selectCandidate(i) {
   renderRoute();
   renderSuggestions(i);
   map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+  refreshTilesSoon();
   setStatus(c.inRange ? '' : `Außerhalb des Bereichs: ${(c.route.distanceM / 1000).toFixed(1)} km.`);
 }
 
@@ -255,6 +273,7 @@ async function runSearch() {
         if (!btn) return;
         const r = results[Number(btn.dataset.i)];
         map.setView([r.lat, r.lon], 13);
+        refreshTilesSoon();
         ul.hidden = true;
       };
     }
@@ -329,6 +348,7 @@ el('savedRoutes').addEventListener('click', (e) => {
   renderMarkers();
   renderRoute();
   map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+  refreshTilesSoon();
   setStatus('');
 });
 

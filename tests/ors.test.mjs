@@ -24,11 +24,18 @@ test('buildRoundTripBody: rounds fractional length to whole meters', () => {
   assert.equal(body.options.round_trip.length, 40001);
 });
 
-test('parseRoundTrip: coords swapped to [lat, lon, ele], distance + ascent numeric', () => {
+test('parseRoundTrip: coords swapped to [lat, lon], distance from summary', () => {
   const r = parseRoundTrip(okGeojson);
-  assert.deepEqual(r.coords[0], [50.1, 8.6, 120]);
+  assert.deepEqual([r.coords[0][0], r.coords[0][1]], [50.1, 8.6]);
   assert.equal(r.distanceM, 41234.5);
-  assert.equal(r.ascendM, 512.3);
+});
+
+test('parseRoundTrip: ascent computed from smoothed coords, not the noisy props.ascent', () => {
+  const coords = [];
+  for (let i = 0; i < 21; i++) coords.push([8 + i * 0.001, 50, i === 10 ? 500 : 100]);
+  const r = parseRoundTrip({ features: [{ geometry: { coordinates: coords }, properties: { summary: { distance: 1000 }, ascent: 400 } }] });
+  assert.notEqual(r.ascendM, 400); // raw props.ascent (the 400 m spike) is ignored
+  assert.ok(r.ascendM < 150, `smoothed ascent too high: ${r.ascendM}`);
 });
 
 test('parseRoundTrip: empty response throws', () => {
