@@ -2,16 +2,14 @@
 
 Statischer Gravel-Routenplaner (kein Build, kein Backend). Plant Routen bevorzugt
 über Schotter- und Waldwege via [BRouter](https://brouter.de) (Profil `gravel`,
-Fallback `trekking`).
+Fallback `trekking`) und erzeugt Auto-Rundtouren über
+[OpenRouteService](https://openrouteservice.org).
 
-## Start
+![Gravel Planner – Strecke von Freiburg in den Schwarzwald mit Distanz, Höhenmetern und Höhenprofil](screenshots/app.jpg)
 
-    npm run serve
-    # http://localhost:8123 öffnen
-
-Direktes Öffnen per file:// funktioniert nicht (ES-Module brauchen HTTP).
-Der Dev-Server (`serve.py`) sendet No-Cache-Header — sonst liefert der Browser
-nach Code-Änderungen veraltete Module aus.
+> **Hinweis:** Der **Runde**-Modus (Auto-Rundtouren) benötigt einen kostenlosen
+> OpenRouteService-API-Key. Der **Strecke**-Modus läuft ohne Key.
+> → [Key einrichten](#openrouteservice-key-für-runde-erforderlich)
 
 ## Features
 
@@ -24,7 +22,26 @@ nach Code-Änderungen veraltete Module aus.
 - Ortssuche (Nominatim), Speichern (localStorage), GPX-Export.
 - UI passt sich automatisch an Hell-/Dunkel-Modus des Systems an (Glas-Optik).
 
-## OpenRouteService-Key (nur für „Runde")
+## Installation
+
+### Voraussetzungen
+
+- **Python 3** — für den Dev-Server (`serve.py`). Alternativ jeder statische HTTP-Server.
+- **Node.js ≥ 18** — nur für die Tests.
+- Keine npm-Abhängigkeiten, kein Build-Schritt.
+
+### Starten
+
+    git clone https://github.com/DerRemo/gravel-planner.git
+    cd gravel-planner
+    npm run serve        # oder: python3 serve.py 8123
+    # http://localhost:8123 im Browser öffnen
+
+Direktes Öffnen per `file://` funktioniert nicht (ES-Module brauchen HTTP).
+Der Dev-Server (`serve.py`) sendet No-Cache-Header — sonst liefert der Browser
+nach Code-Änderungen veraltete Module aus.
+
+## OpenRouteService-Key (für „Runde" erforderlich)
 
 Die Auto-Runde nutzt OpenRouteService. Kostenlosen Key auf
 <https://openrouteservice.org/dev> anlegen. Beim ersten „Runde erzeugen" fragt
