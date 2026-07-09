@@ -6,10 +6,12 @@ Fallback `trekking`).
 
 ## Start
 
-    python3 -m http.server 8080
-    # http://localhost:8080 öffnen
+    npm run serve
+    # http://localhost:8123 öffnen
 
 Direktes Öffnen per file:// funktioniert nicht (ES-Module brauchen HTTP).
+Der Dev-Server (`serve.py`) sendet No-Cache-Header — sonst liefert der Browser
+nach Code-Änderungen veraltete Module aus.
 
 ## Features
 
