@@ -3,8 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <title>Gravel Planner</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -20,15 +27,11 @@
       <ul id="searchResults" hidden></ul>
 
       <div class="mode-row" role="radiogroup" aria-label="Planungsmodus">
-        <label><input type="radio" name="mode" value="manual" checked /> Manuell</label>
         <label><input type="radio" name="mode" value="loop" /> Runde</label>
+        <label><input type="radio" name="mode" value="manual" checked /> Strecke</label>
       </div>
 
       <div id="loopControls" hidden>
-        <div class="mode-row" role="radiogroup" aria-label="Streckentyp">
-          <label><input type="radio" name="tripMode" value="circle" checked /> Runde</label>
-          <label><input type="radio" name="tripMode" value="oneway" /> Einfache Strecke</label>
-        </div>
         <label for="loopKmMin">Distanzbereich (km)</label>
         <div class="search-row">
           <input id="loopKmMin" type="number" min="5" max="300" value="30" aria-label="Minimum km" />

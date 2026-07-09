@@ -1,59 +1,287 @@
+/* ============================================================================
+   Gravel Planner — UI theme (auto light + dark)
+   Charcoal glass ⇄ white frost, orange accent. Tokens drive both themes.
+   ========================================================================== */
+
+:root {
+  color-scheme: light dark;
+
+  /* shared */
+  --font: "Inter", system-ui, -apple-system, sans-serif;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-xs: 8px;
+  --dur: 200ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* light (frost) — default */
+  --bg-panel: rgba(255, 255, 255, 0.72);
+  --fg: #1e293b;
+  --fg-muted: #64748b;
+  --surface: rgba(255, 255, 255, 0.85);
+  --surface-2: rgba(15, 23, 42, 0.05);
+  --surface-hover: rgba(15, 23, 42, 0.08);
+  --border: rgba(15, 23, 42, 0.1);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --accent: #ea580c;
+  --accent-hover: #c2410c;
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(234, 88, 12, 0.12);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+  --shadow: 0 8px 30px rgba(2, 6, 23, 0.18);
+  --shadow-glow: 0 6px 20px rgba(234, 88, 12, 0.28);
+  --ring: rgba(234, 88, 12, 0.5);
+  --highlight: rgba(255, 255, 255, 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-panel: rgba(17, 24, 39, 0.72);
+    --fg: #e5e7eb;
+    --fg-muted: #94a3b8;
+    --surface: rgba(255, 255, 255, 0.06);
+    --surface-2: rgba(255, 255, 255, 0.05);
+    --surface-hover: rgba(255, 255, 255, 0.12);
+    --border: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --accent: #f97316;
+    --accent-hover: #fb923c;
+    --accent-fg: #0b0f19;
+    --accent-soft: rgba(249, 115, 22, 0.18);
+    --danger: #f87171;
+    --danger-soft: rgba(248, 113, 113, 0.14);
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 6px 22px rgba(249, 115, 22, 0.35);
+    --ring: rgba(249, 115, 22, 0.6);
+    --highlight: rgba(255, 255, 255, 0.08);
+  }
+}
+
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
+html, body { margin: 0; height: 100%; font-family: var(--font); }
 #map { position: absolute; inset: 0; }
+[hidden] { display: none !important; }
 
+/* ---- Floating glass panel -------------------------------------------------- */
 .panel {
-  position: absolute; top: 12px; left: 12px; z-index: 1000;
-  width: 280px; max-height: calc(100% - 120px); overflow-y: auto;
-  background: rgba(255, 255, 255, 0.95); border-radius: 10px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25); padding: 14px;
+  position: absolute; top: 14px; left: 14px; z-index: 1000;
+  width: 300px; max-height: calc(100% - 130px); overflow-y: auto;
+  background: var(--bg-panel);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--highlight);
+  padding: 16px;
+  color: var(--fg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
 }
-.panel h1 { font-size: 1.1rem; margin: 0 0 10px; }
-.panel label { font-size: 0.85rem; }
-
-.search-row { display: flex; gap: 6px; margin-bottom: 8px; }
-.search-row input { flex: 1; min-width: 0; padding: 6px 8px; }
-#searchResults { list-style: none; margin: 0 0 8px; padding: 0; }
-#searchResults button {
-  display: block; width: 100%; text-align: left; padding: 6px 8px;
-  border: none; background: #f1f5f9; cursor: pointer; font-size: 0.8rem;
-  margin-bottom: 2px; border-radius: 4px;
+.panel::-webkit-scrollbar { width: 8px; }
+.panel::-webkit-scrollbar-thumb {
+  background: var(--border-strong); border-radius: 8px;
 }
-#searchResults button:hover { background: #e2e8f0; }
-
-.mode-row { display: flex; gap: 12px; margin-bottom: 8px; font-size: 0.9rem; }
-#loopControls { margin-bottom: 8px; }
-
-.action-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.action-row button, .search-row button, #generateLoop {
-  padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;
-  background: #fff; cursor: pointer; font-size: 0.85rem;
+.panel h1 {
+  font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em;
+  margin: 0 0 14px; color: var(--fg);
+  display: flex; align-items: center; gap: 8px;
 }
-.action-row button:hover, .search-row button:hover { background: #f8fafc; }
+.panel h1::before {
+  content: ""; width: 10px; height: 10px; border-radius: 3px;
+  background: var(--accent); box-shadow: 0 0 10px var(--accent);
+}
+.panel label { font-size: 0.85rem; color: var(--fg-muted); }
 
-#suggestions { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+/* ---- Inputs ---------------------------------------------------------------- */
+.search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.search-row input,
+#loopControls input[type="number"] {
+  flex: 1; min-width: 0; padding: 9px 11px;
+  font: inherit; font-size: 0.85rem; color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.search-row input::placeholder { color: var(--fg-muted); }
+.search-row input:focus-visible,
+#loopControls input[type="number"]:focus-visible {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* ---- Buttons --------------------------------------------------------------- */
+button {
+  font: inherit; cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+button:focus-visible {
+  outline: none; box-shadow: 0 0 0 3px var(--ring);
+}
+
+.action-row button,
+.saved-route button,
 .suggestion {
-  text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px;
-  background: #fff; cursor: pointer; font-size: 0.85rem;
+  padding: 8px 12px; font-size: 0.85rem; font-weight: 500;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
-.suggestion.active { border-color: #c2410c; background: #fff7ed; }
+.action-row button:hover,
+.saved-route button:hover {
+  background: var(--surface-hover); border-color: var(--border-strong);
+}
+.action-row button:active { transform: scale(0.97); }
 
-.saved-route { display: flex; gap: 4px; margin-bottom: 4px; }
+/* Primary (accent) actions */
+#searchButton,
+#generateLoop {
+  padding: 9px 14px; font-size: 0.85rem; font-weight: 600;
+  color: var(--accent-fg);
+  background: var(--accent);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-glow);
+  white-space: nowrap;
+}
+#searchButton:hover,
+#generateLoop:hover { background: var(--accent-hover); }
+#searchButton:active,
+#generateLoop:active { transform: scale(0.97); }
+
+.action-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+
+/* ---- Segmented mode toggles ------------------------------------------------ */
+.mode-row {
+  display: flex; gap: 4px; margin-bottom: 12px;
+  padding: 4px; border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.mode-row label {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 7px 8px; border-radius: var(--radius-xs);
+  font-size: 0.85rem; font-weight: 500; color: var(--fg-muted);
+  cursor: pointer; user-select: none;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.mode-row input { position: absolute; opacity: 0; pointer-events: none; }
+.mode-row label:hover { color: var(--fg); }
+.mode-row label:has(input:checked) {
+  background: var(--surface);
+  color: var(--fg); font-weight: 600;
+  box-shadow: 0 1px 3px rgba(2, 6, 23, 0.15), inset 0 1px 0 var(--highlight);
+}
+.mode-row label:has(input:checked)::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+}
+.mode-row label:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+#loopControls { margin-bottom: 10px; }
+#loopControls > label { display: block; margin-bottom: 6px; font-weight: 500; }
+
+/* ---- Search results dropdown ----------------------------------------------- */
+#searchResults {
+  list-style: none; margin: 0 0 10px; padding: 5px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow);
+}
+#searchResults button {
+  display: block; width: 100%; text-align: left; padding: 9px 10px;
+  border: none; background: transparent; color: var(--fg);
+  cursor: pointer; font-size: 0.82rem; border-radius: var(--radius-xs);
+}
+#searchResults button:hover { background: var(--accent-soft); }
+
+/* ---- Loop suggestions ------------------------------------------------------ */
+#suggestions { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.suggestion { text-align: left; }
+.suggestion:hover { background: var(--surface-hover); border-color: var(--border-strong); }
+.suggestion.active {
+  border-color: var(--accent); background: var(--accent-soft);
+  color: var(--fg); font-weight: 600;
+}
+
+/* ---- Saved routes ---------------------------------------------------------- */
+#savedRoutes:not(:empty) { margin-top: 4px; }
+.saved-route { display: flex; gap: 6px; margin-bottom: 6px; }
 .saved-route .load { flex: 1; text-align: left; }
-.saved-route button {
-  padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px;
-  background: #fff; cursor: pointer; font-size: 0.8rem;
+.saved-route button:last-child { color: var(--danger); flex: 0 0 auto; }
+.saved-route button:last-child:hover {
+  background: var(--danger-soft); border-color: var(--danger);
 }
 
-#status { font-size: 0.8rem; color: #b45309; min-height: 1.2em; margin: 4px 0 0; }
+/* ---- Status ---------------------------------------------------------------- */
+#status {
+  font-size: 0.8rem; color: var(--accent); font-weight: 500;
+  min-height: 1.2em; margin: 8px 0 0;
+}
 
+/* ---- Stats bar ------------------------------------------------------------- */
 .statsbar {
-  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
-  z-index: 1000; display: flex; align-items: center; gap: 18px;
-  background: rgba(255, 255, 255, 0.95); border-radius: 10px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25); padding: 10px 16px;
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; display: flex; align-items: center; gap: 20px;
+  background: var(--bg-panel);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--highlight);
+  padding: 11px 18px; color: var(--fg);
 }
 .statsbar div { display: flex; flex-direction: column; align-items: center; }
-.statsbar strong { font-size: 1rem; }
-.statsbar span { font-size: 0.7rem; color: #64748b; }
-#profile { width: 260px; height: 60px; background: #f8fafc; border-radius: 6px; }
+.statsbar strong {
+  font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.statsbar span {
+  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--fg-muted); margin-top: 2px;
+}
+#profile {
+  width: 260px; height: 60px; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+
+/* ---- Leaflet chrome theming ------------------------------------------------ */
+.leaflet-bar {
+  border: none !important;
+  box-shadow: var(--shadow) !important;
+  border-radius: var(--radius-sm) !important;
+  overflow: hidden;
+}
+.leaflet-bar a {
+  background: var(--bg-panel) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  color: var(--fg) !important;
+  border-bottom: 1px solid var(--border) !important;
+  transition: background var(--dur) var(--ease);
+}
+.leaflet-bar a:hover { background: var(--surface-hover) !important; }
+.leaflet-control-attribution {
+  background: var(--bg-panel) !important;
+  color: var(--fg-muted) !important;
+  border-radius: var(--radius-xs) 0 0 0;
+  padding: 2px 8px !important;
+}
+.leaflet-control-attribution a { color: var(--accent) !important; }
+
+/* ---- Responsive ------------------------------------------------------------ */
+@media (max-width: 480px) {
+  .panel { left: 10px; right: 10px; top: 10px; width: auto; }
+  .statsbar { left: 10px; right: 10px; transform: none; justify-content: center; }
+  #profile { width: 40vw; max-width: 200px; }
+}
+
+/* ---- Reduced motion -------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  button:active { transform: none !important; }
+}

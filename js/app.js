@@ -1,7 +1,6 @@
 import { TILE_URL, TILE_ATTRIBUTION, MAP_START, MAP_START_ZOOM } from './config.js';
 import { fetchRouteWithFallback } from './routing.js';
 import { profilePoints, svgPath } from './elevation.js';
-import { generateCandidates } from './loop.js';
 import { fetchRoundTrip } from './ors.js';
 import { searchPlace } from './search.js';
 import { listRoutes, saveRoute, deleteRoute } from './storage.js';
@@ -39,7 +38,7 @@ const state = {
   mode: 'manual',     // 'manual' | 'loop'
   waypoints: [],      // [[lat, lon], ...]
   route: null,        // { coords, distanceM, ascendM, profile }
-  candidates: [],     // Vorschläge aus generateCandidates (Task 11)
+  candidates: [],     // Runden-Vorschläge aus roundTripCandidates (ORS)
   markers: [],
   busy: false,        // gates nur Map-Klicks; Korrektheit sichert requestSeq
 };
@@ -141,7 +140,11 @@ document.querySelectorAll('input[name="mode"]').forEach((radio) =>
     state.mode = radio.value;
     el('loopControls').hidden = state.mode !== 'loop';
     clearAll();
-    if (state.mode === 'loop') setStatus('Startpunkt auf die Karte klicken, dann Runde erzeugen.');
+    setStatus(
+      state.mode === 'loop'
+        ? 'Startpunkt auf die Karte klicken, dann Runde erzeugen.'
+        : 'Start- und Endpunkt auf die Karte klicken.',
+    );
   }),
 );
 
@@ -221,7 +224,6 @@ el('generateLoop').addEventListener('click', async () => {
   const start = state.waypoints[0];
   const minKm = Number(el('loopKmMin').value);
   const maxKm = Number(el('loopKmMax').value);
-  const mode = document.querySelector('input[name="tripMode"]:checked').value;
   if (!start) return setStatus('Zuerst Startpunkt auf die Karte klicken.');
   if (!(minKm >= 5 && maxKm <= 300 && minKm < maxKm)) {
     return setStatus('Ungültiger Distanzbereich (5–300 km, min < max).');
@@ -230,14 +232,7 @@ el('generateLoop').addEventListener('click', async () => {
   state.busy = true;
   setStatus('Vorschläge werden erzeugt …');
   try {
-    const candidates =
-      mode === 'circle'
-        ? await roundTripCandidates(start, minKm, maxKm)
-        : await generateCandidates(
-            start,
-            { minKm, maxKm, mode, baseBearingDeg: Math.random() * 360 },
-            (wps) => fetchRouteWithFallback(wps),
-          );
+    const candidates = await roundTripCandidates(start, minKm, maxKm);
     if (seq !== requestSeq) return;
     if (!candidates.length) throw new Error('Keine Runde gefunden');
     state.candidates = candidates;
@@ -353,6 +348,7 @@ el('savedRoutes').addEventListener('click', (e) => {
 });
 
 renderSavedRoutes();
+setStatus('Start- und Endpunkt auf die Karte klicken.');
 
 el('reverseButton').addEventListener('click', () => {
   if (state.busy) return;
