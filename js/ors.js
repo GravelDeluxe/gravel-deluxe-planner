@@ -1,5 +1,5 @@
 import { ORS_BASE, ORS_PROFILE } from './config.js';
-import { smoothElevations, ascentM } from './elevation.js';
+import { fillVoids, medianFilterElevations, elevationGain } from './elevation.js';
 
 // Body für den ORS-Directions-Aufruf mit round_trip. Start ist [lat, lon],
 // ORS erwartet [lon, lat].
@@ -16,14 +16,15 @@ export function parseRoundTrip(geojson) {
   const feature = geojson?.features?.[0];
   if (!feature) throw new Error('Keine Runde gefunden');
   const raw = feature.geometry.coordinates.map(([lon, lat, ele]) => [lat, lon, ele ?? 0]);
-  // ORS-Höhen glätten (Spikes) und Anstieg daraus rechnen — props.ascent ist die
-  // ungefilterte Summe des Rauschens und deshalb stark überhöht.
-  const coords = smoothElevations(raw);
+  // ORS-SRTM-Höhen bereinigen: Voids füllen → Median gegen Spikes → Anstieg per
+  // Hysterese. props.ascent ist die ungefilterte Rauschsumme und stark überhöht,
+  // ein reines gleitendes Mittel verschmiert die 0-Voids nur, statt sie zu entfernen.
+  const coords = medianFilterElevations(fillVoids(raw));
   const props = feature.properties ?? {};
   return {
     coords,
     distanceM: props.summary?.distance ?? 0,
-    ascendM: Math.round(ascentM(coords)),
+    ascendM: Math.round(elevationGain(coords)),
   };
 }
 
