@@ -1,6 +1,14 @@
-import { ringWaypoints, destinationPoint } from './geo.js';
+import { ringWaypoints, destinationPoint, nearestOnPath } from './geo.js';
 
 const clampFactor = (f) => Math.min(2, Math.max(0.5, f));
+
+// Wegpunkte auf die tatsächlich geroutete Linie ziehen, damit die Marker auf
+// der Route sitzen (BRouter snappt Start/Ring auf den nächsten Weg-Knoten).
+function snapWaypointsToRoute(best) {
+  const coords = best?.route?.coords;
+  if (!coords || coords.length === 0) return best;
+  return { ...best, waypoints: best.waypoints.map((wp) => nearestOnPath(wp, coords)) };
+}
 
 async function fitCircle(start, targetKm, routeFn, { n, maxIter, bearingOffsetDeg, minKm, maxKm }) {
   let radiusKm = targetKm / (2 * Math.PI);
@@ -47,7 +55,8 @@ export async function generateCandidates(
         mode === 'oneway'
           ? await fitOneWay(start, targetKm, routeFn, { maxIter, bearingDeg: bearing, minKm, maxKm })
           : await fitCircle(start, targetKm, routeFn, { n, maxIter, bearingOffsetDeg: bearing, minKm, maxKm });
-      candidates.push({ ...best, inRange: best.distKm >= minKm && best.distKm <= maxKm });
+      const snapped = snapWaypointsToRoute(best);
+      candidates.push({ ...snapped, inRange: snapped.distKm >= minKm && snapped.distKm <= maxKm });
     } catch {
       // Kandidat überspringen (z. B. kein Weg in diese Richtung)
     }

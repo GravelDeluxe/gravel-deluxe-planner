@@ -33,3 +33,20 @@ export function ringWaypoints(center, radiusKm, n = 3, bearingOffsetDeg = 0) {
     destinationPoint(center, radiusKm, bearingOffsetDeg + (i * 360) / n),
   );
 }
+
+// Nächsten Punkt der Route (coords: [[lat, lon, ele], ...]) zu `point` finden.
+// Damit sitzt ein Wegpunkt-Marker exakt auf der gezeichneten Linie statt am
+// Rohklick, den BRouter erst auf den nächsten Weg-Knoten geschoben hat.
+export function nearestOnPath([lat, lon], coords) {
+  if (!coords || coords.length === 0) return [lat, lon];
+  let best = coords[0];
+  let bestD = haversineM([lat, lon], [best[0], best[1]]);
+  for (let i = 1; i < coords.length; i++) {
+    const d = haversineM([lat, lon], [coords[i][0], coords[i][1]]);
+    if (d < bestD) {
+      bestD = d;
+      best = coords[i];
+    }
+  }
+  return [best[0], best[1]];
+}

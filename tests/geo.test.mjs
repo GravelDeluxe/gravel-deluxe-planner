@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { haversineM, destinationPoint, ringWaypoints } from '../js/geo.js';
+import { haversineM, destinationPoint, ringWaypoints, nearestOnPath } from '../js/geo.js';
 
 test('haversineM: 1 degree latitude is ~111.19 km', () => {
   const d = haversineM([50, 8], [51, 8]);
@@ -26,4 +26,14 @@ test('ringWaypoints: n points, all radiusKm from center', () => {
     const d = haversineM([50, 8], p);
     assert.ok(Math.abs(d - 5000) < 50, `distance ${d}`);
   }
+});
+
+test('nearestOnPath: returns nearest coord as [lat, lon], dropping elevation', () => {
+  const coords = [[50, 8, 100], [50.01, 8, 110], [50.02, 8, 120]];
+  assert.deepEqual(nearestOnPath([50.0106, 8.0002], coords), [50.01, 8]);
+});
+
+test('nearestOnPath: empty or missing coords returns the point unchanged', () => {
+  assert.deepEqual(nearestOnPath([50, 8], []), [50, 8]);
+  assert.deepEqual(nearestOnPath([50, 8], undefined), [50, 8]);
 });

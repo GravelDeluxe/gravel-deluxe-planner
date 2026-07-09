@@ -53,6 +53,29 @@ test('all candidates failing throws German error', async () => {
   );
 });
 
+test('circle: waypoints are snapped onto the routed line (fixes marker-off-route gap)', async () => {
+  const start = [50, 8];
+  // Router "snaps" to a node offset from the raw click, like BRouter does.
+  const snappedStart = [50.003, 8.003, 100];
+  const snappingRouteFn = async (waypoints) => {
+    const radiusM = haversineM(waypoints[0], waypoints[1]);
+    return {
+      distanceM: 2 * Math.PI * radiusM * 1.3,
+      ascendM: 0,
+      coords: [snappedStart, [50.02, 8.02, 120], snappedStart],
+    };
+  };
+  const cands = await generateCandidates(start, { minKm: 30, maxKm: 50, mode: 'circle' }, snappingRouteFn);
+  // The start marker must sit ON the route (the snapped node), not at the raw click.
+  assert.deepEqual(cands[0].waypoints[0], [50.003, 8.003]);
+  assert.deepEqual(cands[0].waypoints[cands[0].waypoints.length - 1], [50.003, 8.003]);
+  assert.notDeepEqual(cands[0].waypoints[0], start);
+  // Every waypoint must coincide with a point that lies on the drawn route.
+  const onRoute = ([lat, lon]) =>
+    snappingRouteFn.length && [[50.003, 8.003], [50.02, 8.02]].some((c) => c[0] === lat && c[1] === lon);
+  for (const wp of cands[0].waypoints) assert.ok(onRoute(wp), `off route: ${wp}`);
+});
+
 test('mixed candidate set sorts in-range candidates first', async () => {
   // First candidate (calls 0..maxIter-1) never converges: always out of range.
   // Remaining candidates converge immediately to the exact ring circumference.
