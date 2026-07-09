@@ -2,6 +2,7 @@ import { TILE_URL, TILE_ATTRIBUTION, MAP_START, MAP_START_ZOOM } from './config.
 import { fetchRouteWithFallback } from './routing.js';
 import { profilePoints, svgPath } from './elevation.js';
 import { generateCandidates } from './loop.js';
+import { fetchRoundTrip } from './ors.js';
 import { searchPlace } from './search.js';
 import { listRoutes, saveRoute, deleteRoute } from './storage.js';
 import { toGpx, escapeXml } from './gpx.js';
@@ -156,6 +157,47 @@ el('suggestions').addEventListener('click', (e) => {
   if (btn) selectCandidate(Number(btn.dataset.i));
 });
 
+// ORS-Key liegt lokal im Browser (nie im Repo). Einmalig abfragen.
+function orsKey() {
+  let k = localStorage.getItem('ors.key');
+  if (!k) {
+    k = prompt('OpenRouteService API-Key (einmalig, wird lokal gespeichert):')?.trim();
+    if (k) localStorage.setItem('ors.key', k);
+  }
+  return k;
+}
+
+// Auto-Runde via ORS round_trip: 3 Vorschläge über den Distanzbereich verteilt.
+// Jede Runde ist eine echte Schleife mit Start = Ende — ein Marker auf der Route.
+async function roundTripCandidates(start, minKm, maxKm) {
+  const key = orsKey();
+  if (!key) throw new Error('ORS-API-Key fehlt');
+  const lengthsKm = [minKm, (minKm + maxKm) / 2, maxKm];
+  const results = await Promise.all(
+    lengthsKm.map(async (km) => {
+      try {
+        const route = await fetchRoundTrip(start, {
+          lengthM: km * 1000,
+          seed: Math.floor(Math.random() * 100000),
+          points: 5,
+          key,
+        });
+        const distKm = route.distanceM / 1000;
+        const s = route.coords.length ? [route.coords[0][0], route.coords[0][1]] : start;
+        return {
+          route: { ...route, profile: 'ors' },
+          waypoints: [s],
+          distKm,
+          inRange: distKm >= minKm && distKm <= maxKm,
+        };
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return results.filter(Boolean).sort((a, b) => Number(b.inRange) - Number(a.inRange));
+}
+
 el('generateLoop').addEventListener('click', async () => {
   if (state.busy) return;
   const start = state.waypoints[0];
@@ -168,14 +210,18 @@ el('generateLoop').addEventListener('click', async () => {
   }
   const seq = ++requestSeq;
   state.busy = true;
-  setStatus('Vorschläge werden erzeugt … (kann eine Minute dauern)');
+  setStatus('Vorschläge werden erzeugt …');
   try {
-    const candidates = await generateCandidates(
-      start,
-      { minKm, maxKm, mode, baseBearingDeg: Math.random() * 360 },
-      (wps) => fetchRouteWithFallback(wps),
-    );
+    const candidates =
+      mode === 'circle'
+        ? await roundTripCandidates(start, minKm, maxKm)
+        : await generateCandidates(
+            start,
+            { minKm, maxKm, mode, baseBearingDeg: Math.random() * 360 },
+            (wps) => fetchRouteWithFallback(wps),
+          );
     if (seq !== requestSeq) return;
+    if (!candidates.length) throw new Error('Keine Runde gefunden');
     state.candidates = candidates;
     // selectCandidate bumpt requestSeq und setzt busy=false — der Guard unten greift danach bewusst nicht mehr.
     selectCandidate(0);
@@ -290,9 +336,16 @@ renderSavedRoutes();
 
 el('reverseButton').addEventListener('click', () => {
   if (state.busy) return;
-  if (state.waypoints.length < 2) return setStatus('Keine Route zum Umkehren.');
-  state.waypoints.reverse();
-  reroute();
+  if (state.waypoints.length >= 2) {
+    state.waypoints.reverse();
+    reroute();
+  } else if (state.route) {
+    // Runde (ein Wegpunkt): Linie umdrehen reicht, kein Neu-Routing nötig.
+    state.route = { ...state.route, coords: [...state.route.coords].reverse() };
+    renderRoute();
+  } else {
+    setStatus('Keine Route zum Umkehren.');
+  }
 });
 
 el('exportButton').addEventListener('click', () => {

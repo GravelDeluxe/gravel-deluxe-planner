@@ -15,9 +15,17 @@ nach Code-Änderungen veraltete Module aus.
 
 ## Features
 
-- Manuell: Klicken setzt Wegpunkte, Routing entlang Gravel-Wegen; Ziehen/Klicken/Zurück/Löschen.
-- Vorschläge: Startpunkt + Distanzbereich → 3 Routen-Vorschläge (Runde oder einfache Strecke), klickbar.
+- Manuell: Klicken setzt Wegpunkte, Routing entlang Gravel-Wegen (BRouter); Ziehen/Klicken/Zurück/Löschen.
+- Runde: Startpunkt + Distanzbereich → 3 echte Rundtouren (OpenRouteService `round_trip`), klickbar.
+- Einfache Strecke: Startpunkt + Distanzbereich → 3 Vorschläge in verschiedene Richtungen (BRouter).
 - Distanz, Höhenmeter, Höhenprofil; Ortssuche (Nominatim); Umkehren; Speichern (localStorage); GPX-Export.
+
+## OpenRouteService-Key (nur für „Runde")
+
+Die Auto-Runde nutzt OpenRouteService. Kostenlosen Key auf
+<https://openrouteservice.org/dev> anlegen. Beim ersten „Runde erzeugen" fragt
+die App einmalig danach und speichert ihn lokal (`localStorage`, `ors.key`) —
+er landet nie im Repo. Manuelles Planen und „Einfache Strecke" brauchen keinen Key.
 
 ## Tests
 
