@@ -10,21 +10,44 @@ const map = L.map('map', { zoomControl: false }).setView(MAP_START, MAP_START_ZO
 const tileLayer = L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// CyclOSM (Community-Server) droppt bei Burst nach großen Sprüngen einzelne
-// Kacheln; Leaflet lässt sie dann grau. Fehlerhafte Kachel bis 2× neu anfordern.
+// CyclOSM (Community-Server) liefert nach großen Sprüngen unzuverlässig: Kacheln
+// droppen (429/Timeout) ODER bleiben ohne Fehler-Event hängen. Leaflet lässt sie
+// dann grau — bis zur nächsten Interaktion. Zwei Mechanismen holen sie nach.
+
+// 1) Fehlerhafte Kachel mit exponentiellem Backoff + Jitter erneut anfordern,
+//    damit die Retries nicht gebündelt wieder auf den gedrosselten Server treffen.
+const TILE_MAX_RETRY = 4;
 tileLayer.on('tileerror', (e) => {
   const t = e.tile;
   const tries = Number(t.dataset.retry || 0);
-  if (tries >= 2) return;
+  if (tries >= TILE_MAX_RETRY) return;
   t.dataset.retry = tries + 1;
   const src = t.src;
-  setTimeout(() => { t.src = src; }, 400 * (tries + 1));
+  const delay = 500 * 2 ** tries + Math.random() * 300;
+  setTimeout(() => { if (t.parentNode) t.src = src; }, delay);
 });
 
-// Nach einem programmatischen Sprung (Suche/fitBounds) Kacheln neu ziehen, damit
-// nicht angeforderte/gestallte Kacheln nicht bis zur nächsten Interaktion grau bleiben.
+// Genau die grauen (noch nicht geladenen) Kacheln neu anfordern. Kein redraw():
+// das würde geladene Kacheln verwerfen (Flackern) und laufende Requests abbrechen.
+function nudgeStalledTiles() {
+  const pane = map.getPane('tilePane');
+  const grey = pane ? pane.querySelectorAll('img.leaflet-tile:not(.leaflet-tile-loaded)') : [];
+  grey.forEach((t) => {
+    const src = t.src;
+    if (src) { t.src = ''; t.src = src; }
+  });
+  return grey.length;
+}
+
+// 2) Nach einem programmatischen Sprung (Suche/fitBounds) nachfassen: hängende
+//    Kacheln feuern kein tileerror, darum mit wachsenden Abständen prüfen und
+//    nur die verbliebenen grauen neu ziehen, bis keine mehr übrig sind.
 function refreshTilesSoon() {
-  setTimeout(() => tileLayer.redraw(), 400);
+  let pass = 0;
+  const check = () => {
+    if (nudgeStalledTiles() > 0 && ++pass < 4) setTimeout(check, 1200 + pass * 800);
+  };
+  setTimeout(check, 1000);
 }
 const routeLayer = L.polyline([], { color: '#c2410c', weight: 4 }).addTo(map);
 
