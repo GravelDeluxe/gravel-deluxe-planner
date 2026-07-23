@@ -1,4 +1,4 @@
-import { ORS_BASE, ORS_PROFILE } from './config.js';
+import { ORS_BASE, ORS_PROFILE, ORS_REQUIRES_KEY } from './config.js';
 import { fillVoids, medianFilterElevations, elevationGain } from './elevation.js';
 
 // Body für den ORS-Directions-Aufruf mit round_trip. Start ist [lat, lon],
@@ -28,12 +28,17 @@ export function parseRoundTrip(geojson) {
   };
 }
 
-export async function fetchRoundTrip(start, { lengthM, seed, points, key, fetchImpl = fetch } = {}) {
-  if (!key) throw new Error('ORS-API-Key fehlt (einmalig eingeben)');
+export async function fetchRoundTrip(
+  start,
+  { lengthM, seed, points, key, requiresKey = ORS_REQUIRES_KEY, fetchImpl = fetch } = {},
+) {
+  if (requiresKey && !key) throw new Error('ORS-API-Key fehlt (einmalig eingeben)');
   const url = `${ORS_BASE}/v2/directions/${ORS_PROFILE}/geojson`;
+  const headers = { 'Content-Type': 'application/json' };
+  if (key) headers.Authorization = key;
   const res = await fetchImpl(url, {
     method: 'POST',
-    headers: { Authorization: key, 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(buildRoundTripBody(start, { lengthM, seed, points })),
   });
   if (!res.ok) {

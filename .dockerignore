@@ -1,0 +1,10 @@
+.git
+.gitlab-ci.yml
+node_modules
+local-data
+tests
+screenshots
+IMPLEMENTATION_PLAN.md
+docs
+README.md
+*.log

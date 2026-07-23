@@ -63,6 +63,20 @@ test('fetchRoundTrip: missing key throws before any request', async () => {
   assert.equal(called, false);
 });
 
+test('fetchRoundTrip: self-hosted ORS works without Authorization header', async () => {
+  let seen;
+  const fetchImpl = async (url, opts) => {
+    seen = { url, opts };
+    return { ok: true, json: async () => okGeojson };
+  };
+  const r = await fetchRoundTrip(
+    [50.1, 8.6],
+    { lengthM: 40000, seed: 3, requiresKey: false, fetchImpl },
+  );
+  assert.equal(seen.opts.headers.Authorization, undefined);
+  assert.equal(r.distanceM, 41234.5);
+});
+
 test('fetchRoundTrip: error status surfaces German message with ORS reason', async () => {
   const fetchImpl = async () => ({
     ok: false,

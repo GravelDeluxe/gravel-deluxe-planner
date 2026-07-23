@@ -1,22 +1,20 @@
 # Gravel Planner
 
 Statischer Gravel-Routenplaner (kein Build, kein Backend). Plant Routen bevorzugt
-über Schotter- und Waldwege via [BRouter](https://brouter.de) (Profil `gravel`,
-Fallback `trekking`) und erzeugt Auto-Rundtouren über
-[OpenRouteService](https://openrouteservice.org).
+über Schotter- und Waldwege via [BRouter](https://brouter.de) und erzeugt
+manuelle Strecken sowie geschlossene Rundtouren mit dem gewählten Profil.
 
 ![Gravel Planner – Strecke von Freiburg in den Schwarzwald mit Distanz, Höhenmetern und Höhenprofil](screenshots/app.jpg)
 
-> **Hinweis:** Der **Runde**-Modus (Auto-Rundtouren) benötigt einen kostenlosen
-> OpenRouteService-API-Key. Der **Strecke**-Modus läuft ohne Key.
-> → [Key einrichten](#openrouteservice-key-für-runde-erforderlich)
+> **Hinweis:** Das Profil `gravel-konstant` benötigt den mitgelieferten eigenen
+> BRouter. Der lokale Komplettstart erfolgt mit `make setup`.
 
 ## Features
 
 - **Strecke**: Start- und Endpunkt (plus optionale Zwischenpunkte) auf die Karte
   klicken → Routing entlang Gravel-Wegen (BRouter); Marker ziehen/löschen, Zurück, Umkehren.
-- **Runde**: einen Startpunkt + Distanzbereich → 3 echte Rundtouren
-  (OpenRouteService `round_trip`), klickbar.
+- **Runde**: einen Startpunkt + Distanzbereich → 3 geschlossene
+  Rundtouren über den selbst gehosteten ORS, klickbar.
 - Distanz, Höhenmeter (für Runden robust aus verrauschten SRTM-Höhen berechnet:
   Void-Füllung → Median-Filter → Anstieg per Hysterese), Höhenprofil.
 - Ortssuche (Nominatim), Speichern (localStorage), GPX-Export.
@@ -41,12 +39,36 @@ Direktes Öffnen per `file://` funktioniert nicht (ES-Module brauchen HTTP).
 Der Dev-Server (`serve.py`) sendet No-Cache-Header — sonst liefert der Browser
 nach Code-Änderungen veraltete Module aus.
 
-## OpenRouteService-Key (für „Runde" erforderlich)
+### Komplettes lokales System
 
-Die Auto-Runde nutzt OpenRouteService. Kostenlosen Key auf
-<https://openrouteservice.org/dev> anlegen. Beim ersten „Runde erzeugen" fragt
-die App einmalig danach und speichert ihn lokal (`localStorage`, `ors.key`) —
-er landet nie im Repo. Der Strecken-Modus braucht keinen Key.
+Mit laufendem Docker Desktop richtet ein Befehl Web-App, eigenen BRouter,
+Kartensegmente und einen echten Profiltest ein:
+
+```sh
+make setup
+```
+
+Danach ist die App unter <http://localhost:8086> erreichbar. Weitere Befehle
+zeigt `make help`. Die lokalen `.rd5`-Daten liegen unter
+`local-data/segments4` und werden nicht in Git aufgenommen.
+
+## Gravel GravelDeluxe
+
+Zusätzlich zum unveränderten Originalprofil steht das neue Profil
+`gravel-konstant` unter dem Produktnamen **Gravel GravelDeluxe** zur Auswahl.
+Es bevorzugt zusammenhängende, gut fahrbare
+Gravel-Abschnitte, verteuert Hauptstraßen deutlich und bestraft sehr steile
+Rampen. Das Profil benötigt einen eigenen BRouter; auf der öffentlichen Instanz
+fällt die App automatisch auf `gravel` zurück.
+
+Die App startet im Modus „Runde“ an der Home Base in Bad Rappenau. Rundtouren
+kommen aus der selbst gehosteten ORS-Instanz mit `cycling-mountain`; manuelle
+Strecken verwenden das ausgewählte BRouter-Profil.
+
+Für den Serverbetrieb stehen zwei Container-Images, eine GitLab-CI-Pipeline und
+ein Portainer-Stack mit Watchtower bereit. Einrichtung, Volumes, Parameter und
+Teststrecken sind in [docs/phase-1-gravel-konstant.md](docs/phase-1-gravel-konstant.md)
+dokumentiert.
 
 ## Tests
 

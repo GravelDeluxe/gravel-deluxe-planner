@@ -1,0 +1,25 @@
+FROM gradle:8-jdk17-jammy AS build
+
+ARG BROUTER_VERSION=1.7.9
+WORKDIR /src
+
+RUN git clone --depth 1 --branch "v${BROUTER_VERSION}" \
+    https://github.com/abrensch/brouter.git .
+RUN ./gradlew clean build
+
+FROM eclipse-temurin:17-jre-jammy
+
+WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /src/brouter-server/build/libs/brouter-*-all.jar /app/brouter.jar
+COPY --from=build /src/misc/profiles2 /profiles2
+COPY profiles/gravel-konstant.brf /profiles2/gravel-konstant.brf
+
+ENV JAVA_OPTS="-Xms256m -Xmx2g -DmaxRunningTime=300 -DuseRFCMimeType=false"
+
+VOLUME ["/segments4", "/customprofiles"]
+EXPOSE 17777
+
+CMD ["sh", "-c", "java $JAVA_OPTS -cp /app/brouter.jar btools.server.RouteServer /segments4 /profiles2 /customprofiles 17777 2 0.0.0.0"]

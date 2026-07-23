@@ -1,0 +1,20 @@
+[
+  {
+    "id": "black-forest",
+    "name": "Freiburg – Schwarzwald",
+    "waypoints": [[47.9990, 7.8421], [47.9600, 7.9700]],
+    "focus": ["moderate-climb", "forest-tracks", "avoid-main-roads"]
+  },
+  {
+    "id": "berlin-south",
+    "name": "Berlin Süd – Fläming",
+    "waypoints": [[52.3000, 13.2700], [52.1800, 13.1800]],
+    "focus": ["surface-continuity", "quiet-connectors"]
+  },
+  {
+    "id": "alpine-foothills",
+    "name": "München Süd – Voralpen",
+    "waypoints": [[48.0200, 11.5500], [47.9000, 11.6500]],
+    "focus": ["avoid-steep-ramps", "avoid-secondary-roads"]
+  }
+]

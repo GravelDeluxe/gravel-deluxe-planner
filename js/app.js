@@ -58,12 +58,13 @@ let requestSeq = 0;
 let searchSeq = 0;
 
 const state = {
-  mode: 'manual',     // 'manual' | 'loop'
-  waypoints: [],      // [[lat, lon], ...]
+  mode: 'loop',       // 'manual' | 'loop'
+  waypoints: [[...MAP_START]], // Home Base ist der initiale Rundenstart
   route: null,        // { coords, distanceM, ascendM, profile }
-  candidates: [],     // Runden-Vorschläge aus roundTripCandidates (ORS)
+  candidates: [],     // geschlossene ORS-Runden
   markers: [],
   busy: false,        // gates nur Map-Klicks; Korrektheit sichert requestSeq
+  routingProfile: el('routingProfile').value,
 };
 
 function renderStats() {
@@ -112,13 +113,13 @@ async function reroute() {
   setStatus('Route wird berechnet …');
   state.busy = true;
   try {
-    const route = await fetchRouteWithFallback(waypoints);
+    const route = await fetchRouteWithFallback(waypoints, { profile: state.routingProfile });
     if (seq !== requestSeq) return;
     state.route = route;
     setStatus(
-      state.route.profile === 'gravel'
+      state.route.profile === state.routingProfile
         ? ''
-        : 'Hinweis: Gravel-Profil nicht verfügbar, Trekking-Profil verwendet.',
+        : `Hinweis: Profil „${state.routingProfile}“ nicht verfügbar, „${state.route.profile}“ verwendet.`,
     );
   } catch (err) {
     if (seq !== requestSeq) return;
@@ -171,6 +172,14 @@ document.querySelectorAll('input[name="mode"]').forEach((radio) =>
   }),
 );
 
+el('routingProfile').addEventListener('change', () => {
+  state.routingProfile = el('routingProfile').value;
+  if (state.mode === 'manual' && state.waypoints.length >= 2) reroute();
+  else if (state.mode === 'loop') {
+    setStatus('Runden werden mit dem lokalen ORS-Profil „cycling-mountain“ erzeugt.');
+  }
+});
+
 function renderSuggestions(activeIndex = -1) {
   el('suggestions').innerHTML = state.candidates
     .map(
@@ -201,21 +210,8 @@ el('suggestions').addEventListener('click', (e) => {
   if (btn) selectCandidate(Number(btn.dataset.i));
 });
 
-// ORS-Key liegt lokal im Browser (nie im Repo). Einmalig abfragen.
-function orsKey() {
-  let k = localStorage.getItem('ors.key');
-  if (!k) {
-    k = prompt('OpenRouteService API-Key (einmalig, wird lokal gespeichert):')?.trim();
-    if (k) localStorage.setItem('ors.key', k);
-  }
-  return k;
-}
-
-// Auto-Runde via ORS round_trip: 3 Vorschläge über den Distanzbereich verteilt.
-// Jede Runde ist eine echte Schleife mit Start = Ende — ein Marker auf der Route.
+// Drei native ORS-Rundtouren. Die lokale Instanz braucht keinen API-Key.
 async function roundTripCandidates(start, minKm, maxKm) {
-  const key = orsKey();
-  if (!key) throw new Error('ORS-API-Key fehlt');
   const lengthsKm = [minKm, (minKm + maxKm) / 2, maxKm];
   const results = await Promise.all(
     lengthsKm.map(async (km) => {
@@ -224,13 +220,14 @@ async function roundTripCandidates(start, minKm, maxKm) {
           lengthM: km * 1000,
           seed: Math.floor(Math.random() * 100000),
           points: 5,
-          key,
         });
         const distKm = route.distanceM / 1000;
-        const s = route.coords.length ? [route.coords[0][0], route.coords[0][1]] : start;
+        const snappedStart = route.coords.length
+          ? [route.coords[0][0], route.coords[0][1]]
+          : start;
         return {
-          route: { ...route, profile: 'ors' },
-          waypoints: [s],
+          route: { ...route, profile: 'ors-cycling-mountain' },
+          waypoints: [snappedStart],
           distKm,
           inRange: distKm >= minKm && distKm <= maxKm,
         };
@@ -371,7 +368,8 @@ el('savedRoutes').addEventListener('click', (e) => {
 });
 
 renderSavedRoutes();
-setStatus('Start- und Endpunkt auf die Karte klicken.');
+renderMarkers();
+setStatus('Home Base gesetzt. Distanz wählen und Runde erzeugen.');
 
 el('reverseButton').addEventListener('click', () => {
   if (state.busy) return;

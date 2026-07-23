@@ -26,6 +26,11 @@ test('buildRouteUrl: rejects fewer than two waypoints', () => {
   assert.throws(() => buildRouteUrl([[50.1, 8.6]]), /zwei Wegpunkte/);
 });
 
+test('buildRouteUrl: supports the Gravel Konstant profile', () => {
+  const url = buildRouteUrl([[50.1, 8.6], [50.2, 8.7]], 'gravel-konstant');
+  assert.match(url, /profile=gravel-konstant/);
+});
+
 test('parseRouteResponse: coords become [lat, lon, ele], stats numeric', () => {
   const r = parseRouteResponse(okGeojson);
   assert.deepEqual(r.coords, [[50.1, 8.6, 120], [50.2, 8.7, 140]]);
@@ -57,6 +62,24 @@ test('fetchRouteWithFallback: retries trekking when profile missing', async () =
   assert.equal(r.profile, 'trekking');
   assert.equal(calls.length, 2);
   assert.match(calls[1], /profile=trekking/);
+});
+
+test('fetchRouteWithFallback: custom profile falls back to gravel before trekking', async () => {
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    if (url.includes('profile=gravel-konstant')) {
+      return { ok: false, status: 400, text: async () => 'profile gravel-konstant not found' };
+    }
+    return { ok: true, json: async () => okGeojson };
+  };
+  const r = await fetchRouteWithFallback(
+    [[50.1, 8.6], [50.2, 8.7]],
+    { profile: 'gravel-konstant', fetchImpl },
+  );
+  assert.equal(r.profile, 'gravel');
+  assert.equal(r.requestedProfile, 'gravel-konstant');
+  assert.equal(calls.length, 2);
 });
 
 test('fetchRouteWithFallback: non-profile error is not swallowed', async () => {

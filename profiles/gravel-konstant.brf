@@ -1,0 +1,257 @@
+# Gravel Planner – "Gravel Konstant", Phase 1
+# Derived from the concepts of BRouter's gravel profile (MIT).
+#
+# Goals:
+# - prefer long, rideable gravel/compacted/track sections;
+# - tolerate short, quiet paved connectors;
+# - strongly avoid primary/secondary roads and technical paths;
+# - penalize uphill ramps above 8% and steep/technical descents.
+#
+# Important: Surface continuity and whole-route climb quality cannot be fully
+# expressed by an edge profile. Candidate post-scoring follows in Phase 2.
+
+---context:global
+
+assign validForBikes true
+assign pass1coefficient 4
+assign considerTurnRestrictions true
+assign turnInstructionMode 1
+assign turnInstructionRoundabouts true
+
+# Exposed calibration parameters. Keep preferred ways close to costfactor 1.
+assign preferred_gravel_cost       1.00
+assign dedicated_cycleway_cost     1.00
+assign gravel_track_cost           1.08
+assign quiet_paved_cost            1.65
+assign unknown_surface_cost        1.80
+assign tertiary_cost               4.50
+assign secondary_cost              8.00
+assign primary_cost               12.00
+assign steep_uphill_cost          180.00
+assign steep_uphill_cutoff          8.00
+assign technical_downhill_cost    140.00
+assign technical_downhill_cutoff    6.00
+
+# Kinematic model used only for ETA.
+assign totalMass 90
+assign maxSpeed 35
+assign S_C_x 0.300
+assign C_r 0.007
+assign bikerPower 150
+
+---context:way
+
+assign any_cycleroute =
+  or route_bicycle_icn=yes
+  or route_bicycle_ncn=yes
+  or route_bicycle_rcn=yes
+     route_bicycle_lcn=yes
+
+assign has_cycleway =
+  or cycleway=track|lane|shared_lane|shared
+  or cycleway:left=track|lane|shared_lane
+  or cycleway:right=track|lane|shared_lane
+     cycleway:both=track|lane|shared_lane|shared
+
+# A separately mapped cycleway is preferred over a nearby gravel track when
+# both provide the same connection and the cycleway is not technical/rough.
+assign dedicated_cycleway = highway=cycleway
+
+assign bike_access =
+  if bicycle=no|private|dismount|use_sidepath then false
+  else if access=no|private then bicycle=yes|designated|permissive
+  else true
+
+assign foot_access =
+  if foot=no|private then false
+  else if access=no|private then bicycle=dismount
+  else true
+
+assign bad_oneway =
+  if reversedirection=yes then
+    if oneway:bicycle=no then false
+    else if oneway= then junction=roundabout
+    else oneway=yes|true|1
+  else oneway=-1
+
+assign onewaypenalty =
+  if not bad_oneway then 1
+  else if bicycle=dismount then 6
+  else 20
+
+assign rideable_gravel =
+  or surface=gravel|fine_gravel|compacted
+  or and highway=track tracktype=grade1|grade2
+     and highway=track
+         and surface=unpaved smoothness=excellent|good|intermediate
+
+assign paved =
+  or surface=asphalt|concrete|paved|paving_stones
+  or smoothness=excellent|good
+     tracktype=grade1
+
+assign rough_surface =
+  or surface=ground|grass|dirt|earth|mud|clay|sand|pebblestone
+  or tracktype=grade4|grade5
+     smoothness=very_bad|horrible|very_horrible|impassable
+
+assign technical_path =
+  or sac_scale=mountain_hiking|demanding_mountain_hiking|alpine_hiking|demanding_alpine_hiking|difficult_alpine_hiking
+  or mtb:scale=1|2|3|4|5|6
+     smoothness=horrible|very_horrible|impassable
+
+# Steep ramps are penalized above 8%. Technical ways receive an earlier and
+# stronger downhill penalty. Moderate 4–8% climbs remain unpenalized.
+assign uphillcost steep_uphill_cost
+assign uphillcutoff steep_uphill_cutoff
+assign downhillcost =
+  if or technical_path rough_surface then technical_downhill_cost
+  else 60
+assign downhillcutoff =
+  if or technical_path rough_surface then technical_downhill_cutoff
+  else 10
+
+# A cost is charged when switching broad way classes. This does not know the
+# previous surface, but discourages repeated main-road entries and ferries.
+assign initialclassifier =
+  if route=ferry then 5
+  else if highway=primary|primary_link then 4
+  else if highway=secondary|secondary_link then 3
+  else if highway=tertiary|tertiary_link then 2
+  else 1
+
+assign initialcost =
+  if route=ferry then 10000
+  else if highway=primary|primary_link then 600
+  else if highway=secondary|secondary_link then 350
+  else if highway=tertiary|tertiary_link then 150
+  else 0
+
+assign surfacefactor =
+  if and dedicated_cycleway not or rough_surface technical_path then dedicated_cycleway_cost
+  else if rideable_gravel then preferred_gravel_cost
+  else if surface=fine_gravel|compacted then 1.05
+  else if surface=gravel then 1.10
+  else if and highway=track tracktype=grade3 then 1.40
+  else if and highway=track tracktype=grade4 then 2.80
+  else if and highway=track tracktype=grade5 then 4.50
+  else if rough_surface then 3.20
+  else if paved then quiet_paved_cost
+  else unknown_surface_cost
+
+assign smoothnessfactor =
+  if smoothness=excellent|good then 1.00
+  else if smoothness=intermediate then 1.10
+  else if smoothness=bad then 1.35
+  else if smoothness=very_bad then 2.20
+  else if smoothness=horrible then 5.00
+  else if smoothness=very_horrible|impassable then 10000
+  else 1.00
+
+assign roadfactor =
+  if highway=motorway|motorway_link|trunk|trunk_link then 10000
+  else if highway=primary|primary_link then primary_cost
+  else if highway=secondary|secondary_link then secondary_cost
+  else if highway=tertiary|tertiary_link then tertiary_cost
+  else if highway=residential then 1.65
+  else if highway=living_street then 1.45
+  else if highway=unclassified then 1.55
+  else if highway=service then 1.50
+  else if highway=road then 2.40
+  else if highway=cycleway then dedicated_cycleway_cost
+  else if highway=track then gravel_track_cost
+  else if highway=path then
+    if bicycle=yes|designated then 1.35 else 3.50
+  else if highway=footway then
+    if bicycle=yes|designated then 2.20 else 8.00
+  else if highway=pedestrian then
+    if bicycle=yes|designated then 2.80 else 10.00
+  else if highway=steps then 10000
+  else if route=ferry then 3.00
+  else 10000
+
+assign trafficfactor =
+  if has_cycleway then 1.00
+  else if maxspeed=100 then 2.40
+  else if maxspeed=80|90 then 2.00
+  else if maxspeed=60|70 then 1.55
+  else if maxspeed=50 then 1.25
+  else 1.00
+
+assign routefactor =
+  if any_cycleroute then 1.00
+  else 1.03
+
+assign accessfactor =
+  if bike_access then 1
+  else if foot_access then 8
+  else 10000
+
+assign technicalfactor =
+  if technical_path then 10000
+  else if mtb:scale=0 then 1.25
+  else if mtb:scale=0+ then 2.00
+  else 1.00
+
+assign turncost =
+  if junction=roundabout then 0
+  else if highway=track|path|cycleway then 45
+  else 80
+
+assign costfactor =
+  max 1
+  multiply roadfactor
+  multiply surfacefactor
+  multiply smoothnessfactor
+  multiply trafficfactor
+  multiply routefactor
+  multiply accessfactor
+  multiply technicalfactor
+           onewaypenalty
+
+assign priorityclassifier =
+  if highway=primary|primary_link then 23
+  else if highway=secondary|secondary_link then 22
+  else if highway=tertiary|tertiary_link then 21
+  else if highway=residential|living_street then 15
+  else if highway=service|unclassified|cycleway then 8
+  else if highway=track|path then 6
+  else 0
+
+assign isbadoneway bad_oneway
+assign isgoodoneway =
+  if reversedirection=yes then oneway=-1
+  else if oneway= then junction=roundabout
+  else oneway=yes|true|1
+assign isroundabout junction=roundabout
+assign islinktype highway=motorway_link|trunk_link|primary_link|secondary_link|tertiary_link
+assign isgoodforcars =
+  or highway=primary|secondary|tertiary|residential|living_street|service|unclassified
+     and highway=track tracktype=grade1
+
+assign classifiermask =
+  add multiply isgoodoneway 2
+  add multiply isroundabout 4
+  add multiply islinktype 8
+      multiply isgoodforcars 16
+
+---context:node
+
+assign bike_access =
+  if bicycle=no|private then false
+  else if access=no|private then bicycle=yes|designated|permissive
+  else true
+
+assign barrierpenalty =
+  if barrier= then 0
+  else if barrier=block|bollard then 25
+  else if barrier=gate|swing_gate then 50
+  else if barrier=cycle_barrier then 90
+  else 140
+
+assign initialcost =
+  if not bike_access then 1000000
+  else if railway=level_crossing then 300
+  else if railway=crossing then 35
+  else if highway=traffic_signals|crossing then 20
+  else barrierpenalty

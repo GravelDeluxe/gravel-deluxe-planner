@@ -19,6 +19,7 @@
 
     <aside class="panel" aria-label="Planung">
       <h1>Gravel Planner</h1>
+      <p class="home-base">⌂ Home Base · Bad Rappenau</p>
 
       <div class="search-row">
         <input id="searchInput" type="search" placeholder="Ort suchen …" aria-label="Ort suchen" />
@@ -27,11 +28,20 @@
       <ul id="searchResults" hidden></ul>
 
       <div class="mode-row" role="radiogroup" aria-label="Planungsmodus">
-        <label><input type="radio" name="mode" value="loop" /> Runde</label>
-        <label><input type="radio" name="mode" value="manual" checked /> Strecke</label>
+        <label><input type="radio" name="mode" value="loop" checked /> Runde</label>
+        <label><input type="radio" name="mode" value="manual" /> Strecke</label>
       </div>
 
-      <div id="loopControls" hidden>
+      <label class="field-label" for="routingProfile">Routingprofil</label>
+      <select id="routingProfile" aria-describedby="routingProfileHelp">
+        <option value="gravel">Gravel (Original)</option>
+        <option value="gravel-konstant" selected>Gravel GravelDeluxe</option>
+      </select>
+      <p id="routingProfileHelp" class="field-help">
+        GravelDeluxe: Strecke über BRouter, Runde über den lokalen ORS.
+      </p>
+
+      <div id="loopControls">
         <label for="loopKmMin">Distanzbereich (km)</label>
         <div class="search-row">
           <input id="loopKmMin" type="number" min="5" max="300" value="30" aria-label="Minimum km" />
@@ -61,6 +71,7 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="runtime-config.js"></script>
     <script type="module" src="js/app.js"></script>
   </body>
 </html>
