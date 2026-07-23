@@ -91,12 +91,18 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
   content: ""; width: 10px; height: 10px; border-radius: 3px;
   background: var(--accent); box-shadow: 0 0 10px var(--accent);
 }
+.home-base {
+  margin: -7px 0 13px; color: var(--fg-muted);
+  font-size: 0.75rem; font-weight: 500;
+}
 .panel label { font-size: 0.85rem; color: var(--fg-muted); }
 
 /* ---- Inputs ---------------------------------------------------------------- */
 .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
 .search-row input,
-#loopControls input[type="number"] {
+#loopControls input[type="number"],
+#loopDirection,
+#routingProfile {
   flex: 1; min-width: 0; padding: 9px 11px;
   font: inherit; font-size: 0.85rem; color: var(--fg);
   background: var(--surface);
@@ -109,6 +115,23 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
 #loopControls input[type="number"]:focus-visible {
   outline: none; border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--ring);
+}
+
+#routingProfile {
+  width: 100%; margin: 6px 0 0; padding: 9px 11px;
+  font: inherit; font-size: 0.85rem; color: var(--fg);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+#loopDirection {
+  width: 100%; margin-bottom: 5px;
+}
+#routingProfile:focus-visible {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring);
+}
+.field-label { display: block; font-weight: 500; }
+.field-help {
+  margin: 5px 0 12px; color: var(--fg-muted); font-size: 0.72rem; line-height: 1.35;
 }
 
 /* ---- Buttons --------------------------------------------------------------- */
@@ -147,6 +170,7 @@ button:focus-visible {
   box-shadow: var(--shadow-glow);
   white-space: nowrap;
 }
+#generateLoop { width: 100%; }
 #searchButton:hover,
 #generateLoop:hover { background: var(--accent-hover); }
 #searchButton:active,

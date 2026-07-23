@@ -1,12 +1,18 @@
-import { ORS_BASE, ORS_PROFILE } from './config.js';
+import { ORS_BASE, ORS_PROFILE, ORS_REQUIRES_KEY } from './config.js';
 import { fillVoids, medianFilterElevations, elevationGain } from './elevation.js';
+import { GRAVEL_DELUXE_CUSTOM_MODEL } from './gravel-deluxe.js';
 
 // Body für den ORS-Directions-Aufruf mit round_trip. Start ist [lat, lon],
 // ORS erwartet [lon, lat].
-export function buildRoundTripBody([lat, lon], { lengthM, seed, points = 5 }) {
+export function buildRoundTripBody(
+  [lat, lon],
+  { lengthM, seed, points = 5, customModel = GRAVEL_DELUXE_CUSTOM_MODEL },
+) {
   return {
     coordinates: [[lon, lat]],
     options: { round_trip: { length: Math.round(lengthM), points, seed } },
+    preference: 'recommended',
+    custom_model: customModel,
     elevation: true,
     instructions: false,
   };
@@ -28,13 +34,26 @@ export function parseRoundTrip(geojson) {
   };
 }
 
-export async function fetchRoundTrip(start, { lengthM, seed, points, key, fetchImpl = fetch } = {}) {
-  if (!key) throw new Error('ORS-API-Key fehlt (einmalig eingeben)');
+export async function fetchRoundTrip(
+  start,
+  {
+    lengthM,
+    seed,
+    points,
+    customModel = GRAVEL_DELUXE_CUSTOM_MODEL,
+    key,
+    requiresKey = ORS_REQUIRES_KEY,
+    fetchImpl = fetch,
+  } = {},
+) {
+  if (requiresKey && !key) throw new Error('ORS-API-Key fehlt (einmalig eingeben)');
   const url = `${ORS_BASE}/v2/directions/${ORS_PROFILE}/geojson`;
+  const headers = { 'Content-Type': 'application/json' };
+  if (key) headers.Authorization = key;
   const res = await fetchImpl(url, {
     method: 'POST',
-    headers: { Authorization: key, 'Content-Type': 'application/json' },
-    body: JSON.stringify(buildRoundTripBody(start, { lengthM, seed, points })),
+    headers,
+    body: JSON.stringify(buildRoundTripBody(start, { lengthM, seed, points, customModel })),
   });
   if (!res.ok) {
     let reason = '';

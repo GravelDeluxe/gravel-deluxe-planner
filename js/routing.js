@@ -29,13 +29,22 @@ async function fetchRoute(waypoints, profile, fetchImpl) {
   return parseRouteResponse(await res.json());
 }
 
-export async function fetchRouteWithFallback(waypoints, { fetchImpl = fetch } = {}) {
-  try {
-    const route = await fetchRoute(waypoints, DEFAULT_PROFILE, fetchImpl);
-    return { ...route, profile: DEFAULT_PROFILE };
-  } catch (err) {
-    if (!/profile/i.test(err.message)) throw err;
-    const route = await fetchRoute(waypoints, FALLBACK_PROFILE, fetchImpl);
-    return { ...route, profile: FALLBACK_PROFILE };
+export async function fetchRouteWithFallback(
+  waypoints,
+  { profile = DEFAULT_PROFILE, fetchImpl = fetch } = {},
+) {
+  const profiles = [...new Set([profile, DEFAULT_PROFILE, FALLBACK_PROFILE])];
+  let lastError;
+
+  for (const candidate of profiles) {
+    try {
+      const route = await fetchRoute(waypoints, candidate, fetchImpl);
+      return { ...route, profile: candidate, requestedProfile: profile };
+    } catch (err) {
+      lastError = err;
+      if (!/profile/i.test(err.message)) throw err;
+    }
   }
+
+  throw lastError;
 }

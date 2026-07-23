@@ -2,6 +2,7 @@ import { TILE_URL, TILE_ATTRIBUTION, MAP_START, MAP_START_ZOOM } from './config.
 import { fetchRouteWithFallback } from './routing.js';
 import { profilePoints, svgPath } from './elevation.js';
 import { fetchRoundTrip } from './ors.js';
+import { rankRoundTripCandidates } from './candidates.js';
 import { searchPlace } from './search.js';
 import { listRoutes, saveRoute, deleteRoute } from './storage.js';
 import { toGpx, escapeXml } from './gpx.js';
@@ -58,12 +59,13 @@ let requestSeq = 0;
 let searchSeq = 0;
 
 const state = {
-  mode: 'manual',     // 'manual' | 'loop'
-  waypoints: [],      // [[lat, lon], ...]
+  mode: 'loop',       // 'manual' | 'loop'
+  waypoints: [[...MAP_START]], // Home Base ist der initiale Rundenstart
   route: null,        // { coords, distanceM, ascendM, profile }
-  candidates: [],     // Runden-Vorschläge aus roundTripCandidates (ORS)
+  candidates: [],     // geschlossene ORS-Runden
   markers: [],
   busy: false,        // gates nur Map-Klicks; Korrektheit sichert requestSeq
+  routingProfile: el('routingProfile').value,
 };
 
 function renderStats() {
@@ -112,13 +114,13 @@ async function reroute() {
   setStatus('Route wird berechnet …');
   state.busy = true;
   try {
-    const route = await fetchRouteWithFallback(waypoints);
+    const route = await fetchRouteWithFallback(waypoints, { profile: state.routingProfile });
     if (seq !== requestSeq) return;
     state.route = route;
     setStatus(
-      state.route.profile === 'gravel'
+      state.route.profile === state.routingProfile
         ? ''
-        : 'Hinweis: Gravel-Profil nicht verfügbar, Trekking-Profil verwendet.',
+        : `Hinweis: Profil „${state.routingProfile}“ nicht verfügbar, „${state.route.profile}“ verwendet.`,
     );
   } catch (err) {
     if (seq !== requestSeq) return;
@@ -171,11 +173,19 @@ document.querySelectorAll('input[name="mode"]').forEach((radio) =>
   }),
 );
 
+el('routingProfile').addEventListener('change', () => {
+  state.routingProfile = el('routingProfile').value;
+  if (state.mode === 'manual' && state.waypoints.length >= 2) reroute();
+  else if (state.mode === 'loop') {
+    setStatus('Runden werden mit dem lokalen ORS-Profil „GravelDeluxe“ erzeugt.');
+  }
+});
+
 function renderSuggestions(activeIndex = -1) {
   el('suggestions').innerHTML = state.candidates
     .map(
       (c, i) => `<button type="button" class="suggestion${i === activeIndex ? ' active' : ''}" data-i="${i}">
-        ${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.inRange ? '' : ' (außerhalb Bereich)'}
+        ${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.inRange ? '' : ` (außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm'].filter(Boolean).join(' + ')})`}
       </button>`,
     )
     .join('');
@@ -193,7 +203,11 @@ function selectCandidate(i) {
   renderSuggestions(i);
   map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
   refreshTilesSoon();
-  setStatus(c.inRange ? '' : `Außerhalb des Bereichs: ${(c.route.distanceM / 1000).toFixed(1)} km.`);
+  const misses = [
+    !c.distanceInRange && `${(c.route.distanceM / 1000).toFixed(1)} km`,
+    !c.ascentInRange && `${Math.round(c.route.ascendM)} hm`,
+  ].filter(Boolean);
+  setStatus(c.inRange ? '' : `Beste verfügbare Runde außerhalb des Zielbereichs: ${misses.join(', ')}.`);
 }
 
 el('suggestions').addEventListener('click', (e) => {
@@ -201,22 +215,12 @@ el('suggestions').addEventListener('click', (e) => {
   if (btn) selectCandidate(Number(btn.dataset.i));
 });
 
-// ORS-Key liegt lokal im Browser (nie im Repo). Einmalig abfragen.
-function orsKey() {
-  let k = localStorage.getItem('ors.key');
-  if (!k) {
-    k = prompt('OpenRouteService API-Key (einmalig, wird lokal gespeichert):')?.trim();
-    if (k) localStorage.setItem('ors.key', k);
-  }
-  return k;
-}
-
-// Auto-Runde via ORS round_trip: 3 Vorschläge über den Distanzbereich verteilt.
-// Jede Runde ist eine echte Schleife mit Start = Ende — ein Marker auf der Route.
-async function roundTripCandidates(start, minKm, maxKm) {
-  const key = orsKey();
-  if (!key) throw new Error('ORS-API-Key fehlt');
-  const lengthsKm = [minKm, (minKm + maxKm) / 2, maxKm];
+// Sechs native ORS-Rundtouren erzeugen und nach Distanz UND Höhenmetern
+// bewerten. Die drei besten werden angezeigt; die lokale Instanz braucht keinen Key.
+async function roundTripCandidates(start, minKm, maxKm, minHm, maxHm, direction) {
+  const baseLengths = [minKm, (minKm + maxKm) / 2, maxKm];
+  const lengthsKm = [...baseLengths, ...baseLengths];
+  let firstError;
   const results = await Promise.all(
     lengthsKm.map(async (km) => {
       try {
@@ -224,22 +228,23 @@ async function roundTripCandidates(start, minKm, maxKm) {
           lengthM: km * 1000,
           seed: Math.floor(Math.random() * 100000),
           points: 5,
-          key,
         });
-        const distKm = route.distanceM / 1000;
-        const s = route.coords.length ? [route.coords[0][0], route.coords[0][1]] : start;
+        const snappedStart = route.coords.length
+          ? [route.coords[0][0], route.coords[0][1]]
+          : start;
         return {
-          route: { ...route, profile: 'ors' },
-          waypoints: [s],
-          distKm,
-          inRange: distKm >= minKm && distKm <= maxKm,
+          route: { ...route, profile: 'ors-gravel-deluxe' },
+          waypoints: [snappedStart],
         };
-      } catch {
+      } catch (err) {
+        firstError ??= err;
         return null;
       }
     }),
   );
-  return results.filter(Boolean).sort((a, b) => Number(b.inRange) - Number(a.inRange));
+  const valid = results.filter(Boolean);
+  if (!valid.length && firstError) throw firstError;
+  return rankRoundTripCandidates(valid, { minKm, maxKm, minHm, maxHm, direction, start });
 }
 
 el('generateLoop').addEventListener('click', async () => {
@@ -247,15 +252,23 @@ el('generateLoop').addEventListener('click', async () => {
   const start = state.waypoints[0];
   const minKm = Number(el('loopKmMin').value);
   const maxKm = Number(el('loopKmMax').value);
+  const minHm = Number(el('loopHmMin').value);
+  const maxHm = Number(el('loopHmMax').value);
+  const direction = el('loopDirection').value;
   if (!start) return setStatus('Zuerst Startpunkt auf die Karte klicken.');
   if (!(minKm >= 5 && maxKm <= 300 && minKm < maxKm)) {
     return setStatus('Ungültiger Distanzbereich (5–300 km, min < max).');
+  }
+  if (!(minHm >= 0 && maxHm <= 10000 && minHm <= maxHm)) {
+    return setStatus('Ungültiger Höhenmeterbereich (0–10.000 hm, min ≤ max).');
   }
   const seq = ++requestSeq;
   state.busy = true;
   setStatus('Vorschläge werden erzeugt …');
   try {
-    const candidates = await roundTripCandidates(start, minKm, maxKm);
+    const candidates = await roundTripCandidates(
+      start, minKm, maxKm, minHm, maxHm, direction,
+    );
     if (seq !== requestSeq) return;
     if (!candidates.length) throw new Error('Keine Runde gefunden');
     state.candidates = candidates;
@@ -371,7 +384,8 @@ el('savedRoutes').addEventListener('click', (e) => {
 });
 
 renderSavedRoutes();
-setStatus('Start- und Endpunkt auf die Karte klicken.');
+renderMarkers();
+setStatus('Home Base gesetzt. Distanz wählen und Runde erzeugen.');
 
 el('reverseButton').addEventListener('click', () => {
   if (state.busy) return;

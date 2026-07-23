@@ -1,0 +1,22 @@
+{
+  "coordinates": [[9.1129218, 49.2442844]],
+  "options": {
+    "round_trip": {
+      "length": 30000,
+      "points": 5,
+      "seed": 42
+    }
+  },
+  "preference": "recommended",
+  "custom_model": {
+    "priority": [
+      {
+        "if": "road_class == TRACK",
+        "multiply_by": 0.92
+      }
+    ],
+    "distance_influence": 70
+  },
+  "elevation": true,
+  "instructions": false
+}

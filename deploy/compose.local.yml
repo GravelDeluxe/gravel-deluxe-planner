@@ -1,0 +1,67 @@
+services:
+  gravel-router:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: gravel-router-app:local
+    container_name: gravel-router-local
+    restart: unless-stopped
+    depends_on:
+      brouter:
+        condition: service_healthy
+      ors:
+        condition: service_healthy
+    ports:
+      - "${GRAVEL_ROUTER_PORT:-8086}:80"
+
+  brouter:
+    build:
+      context: ..
+      dockerfile: Dockerfile.brouter
+    image: gravel-router-brouter:local
+    container_name: gravel-brouter-local
+    restart: unless-stopped
+    environment:
+      JAVA_OPTS: "${BROUTER_JAVA_OPTS:--Xms256m -Xmx2g -DmaxRunningTime=300 -DuseRFCMimeType=false}"
+    volumes:
+      - "../local-data/segments4:/segments4:ro"
+      - "../local-data/customprofiles:/customprofiles"
+    ports:
+      - "${BROUTER_PORT:-17777}:17777"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:17777/robots.txt"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  ors:
+    image: openrouteservice/openrouteservice:v9.7.1
+    container_name: gravel-ors-local
+    restart: unless-stopped
+    environment:
+      XMS: "${ORS_XMS:-1g}"
+      XMX: "${ORS_XMX:-4g}"
+      ors.engine.profile_default.build.source_file: /home/ors/files/stuttgart-regbez-latest.osm.pbf
+      ors.engine.profiles.driving-car.enabled: "false"
+      ors.engine.profiles.cycling-mountain.enabled: "false"
+      ors.engine.profiles.gravel-deluxe.enabled: "true"
+      ors.engine.profiles.gravel-deluxe.encoder_name: cycling-mountain
+      ors.engine.profiles.gravel-deluxe.build.encoder_options.consider_elevation: "true"
+      ors.engine.profiles.gravel-deluxe.build.encoder_options.turn_costs: "true"
+      ors.engine.profiles.gravel-deluxe.build.encoder_options.block_fords: "false"
+      ors.engine.profiles.gravel-deluxe.build.encoder_options.enable_custom_models: "true"
+    volumes:
+      - "../local-data/ors/config:/home/ors/config"
+      - "../local-data/ors/elevation_cache:/home/ors/elevation_cache"
+      - "../local-data/ors/files:/home/ors/files"
+      - "../local-data/ors/graphs:/home/ors/graphs"
+      - "../local-data/ors/logs:/home/ors/logs"
+    ports:
+      - "${ORS_PORT:-8080}:8082"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8082/ors/v2/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 80
+      start_period: 60s
