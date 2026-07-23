@@ -16,6 +16,8 @@ manuelle Strecken sowie geschlossene Rundtouren mit dem gewählten Profil.
 - **Runde**: einen Startpunkt sowie Distanz- und Höhenmeterbereich wählen →
   die drei bestpassenden geschlossenen Rundtouren über den selbst gehosteten
   ORS erhalten.
+- Optionale grobe Himmelsrichtung lenkt die Hauptausdehnung einer Runde und
+  hilft, ungünstige Seiten des Startorts zu meiden.
 - Distanz, Höhenmeter (für Runden robust aus verrauschten SRTM-Höhen berechnet:
   Void-Füllung → Median-Filter → Anstieg per Hysterese), Höhenprofil.
 - Ortssuche (Nominatim), Speichern (localStorage), GPX-Export.

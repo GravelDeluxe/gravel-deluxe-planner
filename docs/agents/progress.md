@@ -17,7 +17,7 @@ Stand: 2026-07-23
 - Nginx-Reverse-Proxy für einen gemeinsamen Browser-Ursprung erstellt.
 - GitLab-CI für Tests sowie Build/Push beider Images erstellt.
 - Portainer-Stack mit Host-Volumes und scoped Watchtower erstellt.
-- JavaScript-Teststand: 56 Tests erfolgreich.
+- JavaScript-Teststand: 58 Tests erfolgreich.
 - Compose-Datei erfolgreich mit `docker compose config` geprüft.
 - Agentenkontext token-sparend in `AGENTS.md` und thematische Dateien unter
   `docs/agents/` aufgeteilt.
@@ -52,6 +52,12 @@ Stand: 2026-07-23
   drei bestpassenden angezeigt und Zielabweichungen getrennt markiert.
 - Automatischer ORS-Smoke-Test prüft jetzt eine echte Runde über
   `/ors/v2/directions/gravel-deluxe/geojson`.
+- Grobe Rundenausrichtung mit acht Himmelsrichtungen ergänzt. Gewertet wird
+  die Peilung vom Start zum geometrischen Routenschwerpunkt; sie beeinflusst
+  das Kandidatenranking, bildet aber bewusst keine harte Sperrzone.
+- 18 manuell geplante Referenz-GPX unter `gpx-samples/` übernommen. Der Ordner
+  enthält jetzt ein knappes Schema für GOOD-/BAD-Feedback mit gleichnamiger
+  Markdown-Beschreibung problematischer Abschnitte.
 
 ## Noch offen vor Abschluss von Phase 1
 

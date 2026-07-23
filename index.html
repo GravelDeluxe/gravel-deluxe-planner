@@ -52,6 +52,19 @@
           <input id="loopHmMin" type="number" min="0" max="10000" step="50" value="200" aria-label="Minimum Höhenmeter" />
           <input id="loopHmMax" type="number" min="0" max="10000" step="50" value="800" aria-label="Maximum Höhenmeter" />
         </div>
+        <label for="loopDirection">Grobe Richtung</label>
+        <select id="loopDirection">
+          <option value="any" selected>Beliebig</option>
+          <option value="N">Norden</option>
+          <option value="NE">Nordosten</option>
+          <option value="E">Osten</option>
+          <option value="SE">Südosten</option>
+          <option value="S">Süden</option>
+          <option value="SW">Südwesten</option>
+          <option value="W">Westen</option>
+          <option value="NW">Nordwesten</option>
+        </select>
+        <p class="field-help">Lenkt die Hauptausdehnung der Runde; keine harte Sperrzone.</p>
         <button id="generateLoop" type="button">GravelDeluxe-Vorschläge</button>
         <div id="suggestions" aria-label="Routen-Vorschläge"></div>
       </div>

@@ -185,7 +185,7 @@ function renderSuggestions(activeIndex = -1) {
   el('suggestions').innerHTML = state.candidates
     .map(
       (c, i) => `<button type="button" class="suggestion${i === activeIndex ? ' active' : ''}" data-i="${i}">
-        ${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.inRange ? '' : ` (außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm'].filter(Boolean).join(' + ')})`}
+        ${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.inRange ? '' : ` (außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm'].filter(Boolean).join(' + ')})`}
       </button>`,
     )
     .join('');
@@ -217,7 +217,7 @@ el('suggestions').addEventListener('click', (e) => {
 
 // Sechs native ORS-Rundtouren erzeugen und nach Distanz UND Höhenmetern
 // bewerten. Die drei besten werden angezeigt; die lokale Instanz braucht keinen Key.
-async function roundTripCandidates(start, minKm, maxKm, minHm, maxHm) {
+async function roundTripCandidates(start, minKm, maxKm, minHm, maxHm, direction) {
   const baseLengths = [minKm, (minKm + maxKm) / 2, maxKm];
   const lengthsKm = [...baseLengths, ...baseLengths];
   let firstError;
@@ -244,7 +244,7 @@ async function roundTripCandidates(start, minKm, maxKm, minHm, maxHm) {
   );
   const valid = results.filter(Boolean);
   if (!valid.length && firstError) throw firstError;
-  return rankRoundTripCandidates(valid, { minKm, maxKm, minHm, maxHm });
+  return rankRoundTripCandidates(valid, { minKm, maxKm, minHm, maxHm, direction, start });
 }
 
 el('generateLoop').addEventListener('click', async () => {
@@ -254,6 +254,7 @@ el('generateLoop').addEventListener('click', async () => {
   const maxKm = Number(el('loopKmMax').value);
   const minHm = Number(el('loopHmMin').value);
   const maxHm = Number(el('loopHmMax').value);
+  const direction = el('loopDirection').value;
   if (!start) return setStatus('Zuerst Startpunkt auf die Karte klicken.');
   if (!(minKm >= 5 && maxKm <= 300 && minKm < maxKm)) {
     return setStatus('Ungültiger Distanzbereich (5–300 km, min < max).');
@@ -265,7 +266,9 @@ el('generateLoop').addEventListener('click', async () => {
   state.busy = true;
   setStatus('Vorschläge werden erzeugt …');
   try {
-    const candidates = await roundTripCandidates(start, minKm, maxKm, minHm, maxHm);
+    const candidates = await roundTripCandidates(
+      start, minKm, maxKm, minHm, maxHm, direction,
+    );
     if (seq !== requestSeq) return;
     if (!candidates.length) throw new Error('Keine Runde gefunden');
     state.candidates = candidates;

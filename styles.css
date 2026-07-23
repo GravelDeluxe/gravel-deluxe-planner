@@ -101,6 +101,7 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
 .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
 .search-row input,
 #loopControls input[type="number"],
+#loopDirection,
 #routingProfile {
   flex: 1; min-width: 0; padding: 9px 11px;
   font: inherit; font-size: 0.85rem; color: var(--fg);
@@ -121,6 +122,9 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
   font: inherit; font-size: 0.85rem; color: var(--fg);
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+}
+#loopDirection {
+  width: 100%; margin-bottom: 5px;
 }
 #routingProfile:focus-visible {
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring);

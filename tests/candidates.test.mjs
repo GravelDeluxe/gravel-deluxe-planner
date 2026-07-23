@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inRange, rankRoundTripCandidates } from '../js/candidates.js';
+import { inRange, rankRoundTripCandidates, routeDirection } from '../js/candidates.js';
 
 const candidate = (km, hm, id) => ({
   id,
@@ -41,4 +41,32 @@ test('rankRoundTripCandidates: annotates missed target and limits output', () =>
   const high = ranked.find((item) => item.id === 'high');
   assert.equal(high.distanceInRange, true);
   assert.equal(high.ascentInRange, false);
+});
+
+test('routeDirection: uses route center for closed loops', () => {
+  const north = routeDirection(
+    [[49, 9], [49.2, 8.9], [49.2, 9.1], [49, 9]],
+    [49, 9],
+  );
+  assert.equal(north.cardinal, 'N');
+});
+
+test('rankRoundTripCandidates: requested direction influences ranking', () => {
+  const west = {
+    ...candidate(40, 500, 'west'),
+    route: { distanceM: 40000, ascendM: 500, coords: [[49, 9], [49, 8.8], [49, 9]] },
+  };
+  const east = {
+    ...candidate(40, 500, 'east'),
+    route: { distanceM: 40000, ascendM: 500, coords: [[49, 9], [49, 9.2], [49, 9]] },
+  };
+  const ranked = rankRoundTripCandidates(
+    [west, east],
+    {
+      minKm: 30, maxKm: 50, minHm: 200, maxHm: 800,
+      direction: 'W', start: [49, 9],
+    },
+  );
+  assert.equal(ranked[0].id, 'west');
+  assert.equal(ranked[0].direction, 'W');
 });
