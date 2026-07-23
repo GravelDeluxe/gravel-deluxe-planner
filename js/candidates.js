@@ -1,5 +1,6 @@
 import { scoreRouteAgainstReferences } from './reference-analysis.js';
 import { evaluateRouteConstraints } from './route-constraints.js';
+import { evaluateRouteFlow } from './route-flow.js';
 
 export function inRange(value, min, max) {
   return value >= min && value <= max;
@@ -84,12 +85,14 @@ export function rankRoundTripCandidates(
         allowMeadowEarth,
         maxSlopePercent,
       });
+      const flow = evaluateRouteFlow(candidate.route.coords);
       const score =
         relativeDeviation(distKm, minKm, maxKm) * 2
         + relativeDeviation(ascendM, minHm, maxHm)
         + directionDeviation * 1.5
         + reference.adjustment
         + constraints.adjustment
+        + flow.adjustment
         + Math.abs(distKm - kmMid) / Math.max(maxKm - minKm, 1) * 0.01
         + Math.abs(ascendM - hmMid) / Math.max(maxHm - minHm, 100) * 0.005;
       return {
@@ -101,10 +104,18 @@ export function rankRoundTripCandidates(
         directionDeviation,
         reference,
         constraints,
+        flow,
         inRange: distanceInRange && ascentInRange && constraints.allowed,
         score,
       };
     })
-    .sort((a, b) => a.score - b.score)
+    .sort((a, b) => {
+      // Eine eingehaltene Maximalsteigung schlägt immer die Distanzvorgabe:
+      // lieber zusätzliche Kilometer als eine ungewollt steile Rampe.
+      if (a.constraints.slopeAllowed !== b.constraints.slopeAllowed) {
+        return Number(b.constraints.slopeAllowed) - Number(a.constraints.slopeAllowed);
+      }
+      return a.score - b.score;
+    })
     .slice(0, limit);
 }

@@ -90,10 +90,17 @@ function incrementCells(target, cells) {
 export function buildReferenceModel(goodRoutes, feedbackItems = []) {
   const goodCells = {};
   const badCells = {};
+  const badCellsByProblem = {};
+  const problemCounts = {};
   for (const route of goodRoutes) incrementCells(goodCells, route.cells);
   for (const item of feedbackItems) {
     for (const passage of item.passages ?? []) {
-      incrementCells(badCells, uniqueRouteCells(passage.coords ?? []));
+      const cells = uniqueRouteCells(passage.coords ?? []);
+      const problem = String(passage.problem || 'anderes');
+      incrementCells(badCells, cells);
+      badCellsByProblem[problem] ??= {};
+      incrementCells(badCellsByProblem[problem], cells);
+      problemCounts[problem] = (problemCounts[problem] ?? 0) + 1;
     }
   }
   return {
@@ -104,6 +111,7 @@ export function buildReferenceModel(goodRoutes, feedbackItems = []) {
       badPassages: feedbackItems.reduce((sum, item) => sum + (item.passages?.length ?? 0), 0),
       goodCells: Object.keys(goodCells).length,
       badCells: Object.keys(badCells).length,
+      problemCounts,
     },
     routes: goodRoutes.map(({ fingerprint, cells, ...route }) => ({
       ...route,
@@ -111,6 +119,7 @@ export function buildReferenceModel(goodRoutes, feedbackItems = []) {
     })),
     goodCells,
     badCells,
+    badCellsByProblem,
   };
 }
 
@@ -134,4 +143,23 @@ export function scoreRouteAgainstReferences(coords, model) {
     // deutlich stärker als die weiche Bevorzugung bekannter guter Korridore.
     adjustment: badCoverage * 12 - goodAffinity * 0.6,
   };
+}
+
+export function feedbackAvoidPolygons(model, protectedPoints = []) {
+  if (model?.schema !== REFERENCE_MODEL_VERSION) return null;
+  const polygons = Object.keys(model.badCells ?? {}).flatMap((cell) => {
+    const [lat, lon] = cell.split(',').map(Number);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return [];
+    const center = [lat, lon];
+    if (protectedPoints.some((point) => haversineM(center, point) < 350)) return [];
+    const half = 0.00055;
+    return [[[
+      [lon - half, lat - half],
+      [lon + half, lat - half],
+      [lon + half, lat + half],
+      [lon - half, lat + half],
+      [lon - half, lat - half],
+    ]]];
+  });
+  return polygons.length ? { type: 'MultiPolygon', coordinates: polygons } : null;
 }

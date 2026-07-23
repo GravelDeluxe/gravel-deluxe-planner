@@ -200,6 +200,11 @@ Die erweiterten Gewichtungen bleiben als Experteneinstellungen verfügbar, werde
 4. Ergebnisse im Feld testen und mit kurzen Nutzerbewertungen erfassen.
 5. Gewichtungen nur verändern, wenn sich Testwerte und Kartenprüfung gemeinsam verbessern.
 
+Feedback zu „unnötiger Abkürzung“ und „zu viel Zig-Zag“ bleibt im
+Referenzmodell nach Problemtyp getrennt. Zusätzlich bewertet ein allgemeiner
+Fahrfluss-Score starke Richtungswechsel, Kehrtwenden und wiederholte Passagen,
+damit flüssiges Fahren bereits ohne manuelles Feedback bevorzugt wird.
+
 ## Abnahmekriterien für einen ersten Release
 
 - Das normale Gravel-Profil funktioniert unverändert weiter.

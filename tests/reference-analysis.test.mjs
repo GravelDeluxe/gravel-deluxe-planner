@@ -8,6 +8,7 @@ import {
   analyzeReferenceRoute,
   buildReferenceModel,
   scoreRouteAgainstReferences,
+  feedbackAvoidPolygons,
 } from '../js/reference-analysis.js';
 
 test('parseGpx: reads regular GPX with elevation', () => {
@@ -71,4 +72,31 @@ test('reference model rewards good corridors and penalizes feedback corridors', 
   assert.equal(model.schema, REFERENCE_MODEL_VERSION);
   assert.ok(scoreRouteAgainstReferences(goodCoords, model).adjustment < 0);
   assert.ok(scoreRouteAgainstReferences(badCoords, model).adjustment > 0);
+});
+
+test('reference model retains bad corridors grouped by problem type', () => {
+  const model = buildReferenceModel([], [{
+    passages: [
+      { problem: 'unnötige Abkürzung', coords: [[49, 9], [49.001, 9]] },
+      { problem: 'zu viel Zig-Zag', coords: [[49, 9.01], [49.001, 9.01]] },
+    ],
+  }]);
+  assert.equal(model.summary.problemCounts['unnötige Abkürzung'], 1);
+  assert.equal(model.summary.problemCounts['zu viel Zig-Zag'], 1);
+  assert.ok(Object.keys(model.badCellsByProblem['unnötige Abkürzung']).length);
+  assert.ok(Object.keys(model.badCellsByProblem['zu viel Zig-Zag']).length);
+});
+
+test('feedbackAvoidPolygons converts bad cells but protects start and highlights', () => {
+  const model = {
+    schema: REFERENCE_MODEL_VERSION,
+    badCells: {
+      '49.000,9.000': 1,
+      '49.100,9.100': 1,
+    },
+  };
+  const geometry = feedbackAvoidPolygons(model, [[49, 9]]);
+  assert.equal(geometry.type, 'MultiPolygon');
+  assert.equal(geometry.coordinates.length, 1);
+  assert.ok(geometry.coordinates[0][0][0][0] > 9);
 });

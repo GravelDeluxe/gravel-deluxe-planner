@@ -6,7 +6,7 @@
 make validate
 ```
 
-Aktueller Stand: 81 Node-Tests, BRouter-Profilintegrität und eine reale
+Aktueller Stand: 96 Node-Tests, BRouter-Profilintegrität und eine reale
 Freiburg–Schwarzwald-Route mit `gravel-konstant` erfolgreich geprüft.
 
 ## Profilprüfung
@@ -50,5 +50,5 @@ Zu protokollieren:
   Einfluss auf das Kandidatenranking.
 - ORS-, Constraint- und Highlighttests prüfen Oberflächen-Zusatzdaten,
   Steigungsberechnung, Koordinatenkonvertierung, Via-Routing sowie die
-  räumliche Einsortierung verpflichtender Highlights. Der ORS-Smoke-Test
+  räumliche Einsortierung verpflichtender Highlights und Graph-Snapping. Der ORS-Smoke-Test
   verwendet ausschließlich Encoded Values, die das Profil bereitstellt.

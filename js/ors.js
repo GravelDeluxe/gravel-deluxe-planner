@@ -6,11 +6,19 @@ import { GRAVEL_DELUXE_CUSTOM_MODEL } from './gravel-deluxe.js';
 // ORS erwartet [lon, lat].
 export function buildRoundTripBody(
   [lat, lon],
-  { lengthM, seed, points = 5, customModel = GRAVEL_DELUXE_CUSTOM_MODEL },
+  {
+    lengthM,
+    seed,
+    points = 5,
+    customModel = GRAVEL_DELUXE_CUSTOM_MODEL,
+    avoidPolygons = null,
+  },
 ) {
+  const options = { round_trip: { length: Math.round(lengthM), points, seed } };
+  if (avoidPolygons) options.avoid_polygons = avoidPolygons;
   return {
     coordinates: [[lon, lat]],
-    options: { round_trip: { length: Math.round(lengthM), points, seed } },
+    options,
     preference: 'recommended',
     custom_model: customModel,
     extra_info: ['surface'],
@@ -21,12 +29,12 @@ export function buildRoundTripBody(
 
 export function buildWaypointRouteBody(
   waypoints,
-  { customModel = GRAVEL_DELUXE_CUSTOM_MODEL } = {},
+  { customModel = GRAVEL_DELUXE_CUSTOM_MODEL, avoidPolygons = null } = {},
 ) {
   if (!Array.isArray(waypoints) || waypoints.length < 2) {
     throw new Error('Mindestens zwei ORS-Wegpunkte erforderlich');
   }
-  return {
+  const body = {
     coordinates: waypoints.map(([lat, lon]) => [lon, lat]),
     preference: 'recommended',
     custom_model: customModel,
@@ -34,6 +42,8 @@ export function buildWaypointRouteBody(
     elevation: true,
     instructions: false,
   };
+  if (avoidPolygons) body.options = { avoid_polygons: avoidPolygons };
+  return body;
 }
 
 export function parseRoundTrip(geojson) {
@@ -60,6 +70,7 @@ export async function fetchRoundTrip(
     seed,
     points,
     customModel = GRAVEL_DELUXE_CUSTOM_MODEL,
+    avoidPolygons = null,
     key,
     requiresKey = ORS_REQUIRES_KEY,
     fetchImpl = fetch,
@@ -72,7 +83,10 @@ export async function fetchRoundTrip(
   const res = await fetchImpl(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify(buildRoundTripBody(start, { lengthM, seed, points, customModel })),
+    body: JSON.stringify(buildRoundTripBody(
+      start,
+      { lengthM, seed, points, customModel, avoidPolygons },
+    )),
   });
   if (!res.ok) {
     let reason = '';
@@ -123,6 +137,7 @@ export async function fetchRouteThroughWaypoints(
   waypoints,
   {
     customModel = GRAVEL_DELUXE_CUSTOM_MODEL,
+    avoidPolygons = null,
     key,
     requiresKey = ORS_REQUIRES_KEY,
     fetchImpl = fetch,
@@ -134,7 +149,7 @@ export async function fetchRouteThroughWaypoints(
   const res = await fetchImpl(`${ORS_BASE}/v2/directions/${ORS_PROFILE}/geojson`, {
     method: 'POST',
     headers,
-    body: JSON.stringify(buildWaypointRouteBody(waypoints, { customModel })),
+    body: JSON.stringify(buildWaypointRouteBody(waypoints, { customModel, avoidPolygons })),
   });
   if (!res.ok) {
     let reason = '';
@@ -147,4 +162,49 @@ export async function fetchRouteThroughWaypoints(
     throw new Error(`ORS-Fehler (${res.status})${reason ? `: ${reason}` : ''}`);
   }
   return parseRoundTrip(await res.json());
+}
+
+export async function snapWaypoints(
+  waypoints,
+  {
+    radiusM = 2500,
+    key,
+    requiresKey = ORS_REQUIRES_KEY,
+    fetchImpl = fetch,
+  } = {},
+) {
+  if (!Array.isArray(waypoints) || !waypoints.length) {
+    throw new Error('Mindestens ein ORS-Snap-Punkt erforderlich');
+  }
+  if (requiresKey && !key) throw new Error('ORS-API-Key fehlt (einmalig eingeben)');
+  const headers = { 'Content-Type': 'application/json' };
+  if (key) headers.Authorization = key;
+  const response = await fetchImpl(`${ORS_BASE}/v2/snap/${ORS_PROFILE}/json`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      locations: waypoints.map(([lat, lon]) => [lon, lat]),
+      radius: radiusM,
+    }),
+  });
+  if (!response.ok) {
+    let reason = '';
+    try {
+      const body = await response.json();
+      reason = body?.error?.message ?? '';
+    } catch {
+      /* keine JSON-Fehlerantwort */
+    }
+    throw new Error(`ORS-Snap-Fehler (${response.status})${reason ? `: ${reason}` : ''}`);
+  }
+  const body = await response.json();
+  const snapped = body?.locations?.map((entry) =>
+    entry?.location ? [entry.location[1], entry.location[0]] : null);
+  const missingIndex = snapped?.findIndex((point) => point === null) ?? -1;
+  if (!snapped || snapped.length !== waypoints.length || missingIndex >= 0) {
+    throw new Error(
+      `Kein routbarer Weg im Umkreis von ${radiusM} m für Formpunkt ${missingIndex + 1}`,
+    );
+  }
+  return snapped;
 }

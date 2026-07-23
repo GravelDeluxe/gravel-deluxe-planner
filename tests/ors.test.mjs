@@ -7,6 +7,7 @@ import {
   fetchRoundTrip,
   fetchRoundTripWithRetry,
   fetchRouteThroughWaypoints,
+  snapWaypoints,
 } from '../js/ors.js';
 
 const okGeojson = {
@@ -41,6 +42,23 @@ test('buildRoundTripBody: single [lon, lat] coordinate + round_trip options', ()
 test('buildRoundTripBody: rounds fractional length to whole meters', () => {
   const body = buildRoundTripBody([50, 8], { lengthM: 40000.7, seed: 1 });
   assert.equal(body.options.round_trip.length, 40001);
+});
+
+test('ORS request bodies include feedback avoidance polygons', () => {
+  const avoidPolygons = {
+    type: 'Polygon',
+    coordinates: [[[9, 49], [9.01, 49], [9, 49.01], [9, 49]]],
+  };
+  const roundTrip = buildRoundTripBody(
+    [49, 9],
+    { lengthM: 40000, seed: 1, avoidPolygons },
+  );
+  const waypoints = buildWaypointRouteBody(
+    [[49, 9], [49.1, 9.1]],
+    { avoidPolygons },
+  );
+  assert.deepEqual(roundTrip.options.avoid_polygons, avoidPolygons);
+  assert.deepEqual(waypoints.options.avoid_polygons, avoidPolygons);
 });
 
 test('buildWaypointRouteBody: converts highlights from lat/lon to ORS lon/lat', () => {
@@ -184,4 +202,43 @@ test('fetchRouteThroughWaypoints: sends a normal directions request', async () =
   );
   assert.equal(body.options, undefined);
   assert.equal(body.coordinates.length, 3);
+});
+
+test('snapWaypoints: snaps lat/lon form points to the cycling graph', async () => {
+  let requestBody;
+  const fetchImpl = async (_url, options) => {
+    requestBody = JSON.parse(options.body);
+    return {
+      ok: true,
+      json: async () => ({
+        locations: [
+          { location: [9.01, 49.01], snapped_distance: 12 },
+          { location: [9.21, 49.21], snapped_distance: 480 },
+        ],
+      }),
+    };
+  };
+  const snapped = await snapWaypoints(
+    [[49, 9], [49.2, 9.2]],
+    { radiusM: 2500, requiresKey: false, fetchImpl },
+  );
+  assert.deepEqual(requestBody, {
+    locations: [[9, 49], [9.2, 49.2]],
+    radius: 2500,
+  });
+  assert.deepEqual(snapped, [[49.01, 9.01], [49.21, 9.21]]);
+});
+
+test('snapWaypoints: reports a form point without a nearby routable edge', async () => {
+  const fetchImpl = async () => ({
+    ok: true,
+    json: async () => ({ locations: [{ location: [9, 49] }, null] }),
+  });
+  await assert.rejects(
+    snapWaypoints(
+      [[49, 9], [49.2, 9.2]],
+      { requiresKey: false, fetchImpl },
+    ),
+    /Formpunkt 2/,
+  );
 });

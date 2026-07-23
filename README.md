@@ -105,6 +105,10 @@ guter paralleler Radweg gewinnt knapp gegen einen Track. Sechs Varianten werden
 nach Distanz und Höhenmetern bewertet, die besten drei angezeigt. Manuelle
 Strecken verwenden weiterhin das ausgewählte BRouter-Profil.
 
+ORS verwendet den vollständigen Geofabrik-Extrakt Baden-Württemberg. Der
+kleinere Extrakt „Regierungsbezirk Stuttgart“ endet zu nah nördlich der Home
+Base und kann deshalb keine zuverlässigen Runden Richtung Odenwald erzeugen.
+
 ### GPX- und Feedbackanalyse
 
 Die Referenzanalyse verarbeitet alle guten `.gpx`-Dateien und alle mit dem
@@ -123,9 +127,26 @@ zusätzlicher, erklärbarer Faktor in das Kandidatenranking ein:
 - Übereinstimmung mit schlechtem Feedback erhält eine deutlich stärkere Strafe;
 - Distanz, Höhenmeter und Himmelsrichtung bleiben eigenständige Ziele.
 
+„Unnötige Abkürzung“ und „zu viel Zig-Zag“ stehen als eigene
+Feedbackkategorien bereit. Unabhängig vom Feedback bewertet das Ranking den
+Fahrfluss jeder Route: starke Richtungswechsel, Kehrtwenden und mehrfach
+befahrene Passagen erhalten eine Strafe, flüssige Linien werden bevorzugt.
+Die eingestellte Maximalsteigung hat Vorrang vor der Maximaldistanz: Die Suche
+wird bei Bedarf bis 150 % der gewünschten Obergrenze erweitert und bevorzugt
+immer die längere, weniger steile Variante.
+Automatisch erzeugte ORS-Formpunkte bleiben intern; auf der Karte sind nur der
+Startpunkt und die vom Nutzer gesetzten gelben Highlights sichtbar.
+Die Route zeigt Bodenarten abschnittsweise per Farbe und Tooltip sowie
+Richtungspfeile. Steigungen über dem Grenzwert erscheinen hellorange, ausgeschlossene
+Wiese-/Erde-Passagen braun und kombinierte Verstöße violett. Der permanente
+Scrubber im unteren Overlay koppelt Kartenposition, Distanz, aktuelle Höhe und
+eine gelbe Positionsmarke im Höhenprofil; markiertes Feedback erscheint gelb.
+
 Ein Feedback-Export wird nach `gpx-samples/` kopiert und anschließend
 `make analyze` ausgeführt. Beim nächsten Laden der App nutzt sie das
 aktualisierte Modell.
+Feedbackdateien enthalten Bodenabschnitte und einen sekundengenauen Zeitstempel
+im Dateinamen, sodass mehrere Exporte derselben benannten Route erhalten bleiben.
 
 Highlights werden zunächst in eine native ORS-Runde einsortiert. Zusätzliche
 Stützpunkte erhalten deren Grundform, anschließend routet ORS zwingend durch

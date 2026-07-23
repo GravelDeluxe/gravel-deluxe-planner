@@ -95,6 +95,19 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
   margin: -7px 0 13px; color: var(--fg-muted);
   font-size: 0.75rem; font-weight: 500;
 }
+.route-legend {
+  display: flex; flex-wrap: wrap; gap: 5px 10px; margin: 8px 0;
+  color: var(--fg-muted); font-size: 0.7rem;
+}
+.route-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.route-legend i { width: 15px; height: 4px; border-radius: 3px; background: #ea580c; }
+.route-legend .legend-slope { background: #fb923c; }
+.route-legend .legend-forbidden { background: #92400e; }
+.route-legend .legend-both { background: #7e22ce; }
+.route-direction-arrow {
+  color: #111827; font-size: 18px; font-weight: 800;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+}
 .panel label { font-size: 0.85rem; color: var(--fg-muted); }
 
 /* ---- Inputs ---------------------------------------------------------------- */
@@ -344,6 +357,16 @@ button:focus-visible {
 #profile {
   width: 260px; height: 60px; background: var(--surface-2);
   border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.statsbar .scrub-overlay {
+  position: relative; display: grid; grid-template-columns: 1fr auto;
+  grid-template-rows: 60px auto; align-items: center; width: 300px;
+}
+.scrub-overlay #profile { grid-column: 1 / -1; width: 100%; }
+.scrub-overlay #feedbackScrubber { grid-column: 1; margin: 5px 8px 0 0; }
+.scrub-overlay #feedbackPosition {
+  grid-column: 2; margin: 5px 0 0; white-space: nowrap;
+  font-size: 0.7rem; text-transform: none;
 }
 
 /* ---- Leaflet chrome theming ------------------------------------------------ */

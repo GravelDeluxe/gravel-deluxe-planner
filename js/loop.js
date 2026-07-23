@@ -64,3 +64,65 @@ export async function generateCandidates(
   if (!candidates.length) throw new Error('Keine Route gefunden');
   return candidates.sort((a, b) => Number(b.inRange) - Number(a.inRange));
 }
+
+export function directionalLoopWaypoints(start, targetKm, bearingDeg) {
+  return [
+    start,
+    destinationPoint(start, targetKm * 0.28, bearingDeg - 38),
+    destinationPoint(start, targetKm * 0.45, bearingDeg),
+    destinationPoint(start, targetKm * 0.28, bearingDeg + 38),
+    start,
+  ];
+}
+
+// Tropfenförmige Rundkurse, deren gesamte Hauptausdehnung in der gewünschten
+// Himmelsrichtung liegt. Anders als ein symmetrischer Ring erzeugt diese Form
+// keine große Gegenhälfte auf der falschen Seite des Startpunkts.
+export async function generateDirectionalCandidates(
+  start,
+  {
+    minKm,
+    maxKm,
+    bearingDeg,
+    count = 6,
+    maxIter = 3,
+  },
+  routeFn,
+) {
+  const targets = [minKm, (minKm + maxKm) / 2, maxKm];
+  const offsets = [-45, -34, -24, -12, 0, 12, 24, 34, 45];
+  const candidates = [];
+  for (let index = 0; index < count; index++) {
+    const targetKm = targets[index % targets.length];
+    let shapeKm = targetKm;
+    let best = null;
+    for (let iteration = 0; iteration < maxIter; iteration++) {
+      try {
+        const waypoints = directionalLoopWaypoints(
+          start,
+          shapeKm,
+          bearingDeg + offsets[index % offsets.length],
+        );
+        const route = await routeFn(waypoints);
+        const distKm = route.distanceM / 1000;
+        const deviation = Math.abs(distKm - targetKm);
+        if (!best || deviation < best.deviation) {
+          best = { route, waypoints, distKm, deviation };
+        }
+        if (distKm >= minKm && distKm <= maxKm) break;
+        shapeKm *= clampFactor(targetKm / Math.max(distKm, 0.1));
+      } catch {
+        break;
+      }
+    }
+    if (best) {
+      const snapped = snapWaypointsToRoute(best);
+      candidates.push({
+        ...snapped,
+        inRange: snapped.distKm >= minKm && snapped.distKm <= maxKm,
+      });
+    }
+  }
+  if (!candidates.length) throw new Error('Keine gerichtete ORS-Runde gefunden');
+  return candidates;
+}

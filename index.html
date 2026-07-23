@@ -77,6 +77,12 @@
         <div id="highlights" class="highlights" aria-label="Highlights"></div>
         <button id="generateLoop" type="button">GravelDeluxe-Vorschläge</button>
         <div id="suggestions" aria-label="Routen-Vorschläge"></div>
+        <div class="route-legend" aria-label="Streckenfarben">
+          <span><i class="legend-surface"></i>Bodenart</span>
+          <span><i class="legend-slope"></i>zu steil</span>
+          <span><i class="legend-forbidden"></i>Wiese/Erde</span>
+          <span><i class="legend-both"></i>beides</span>
+        </div>
       </div>
 
       <label class="field-label" for="routeName">Routenname für Export</label>
@@ -96,9 +102,6 @@
           <strong>Schlechte Passage markieren</strong>
           <button id="feedbackClose" type="button" aria-label="Feedback schließen">×</button>
         </div>
-        <label for="feedbackScrubber">Route scrubben</label>
-        <input id="feedbackScrubber" type="range" min="0" max="1000" value="0" />
-        <output id="feedbackPosition">Start · 0,0 km</output>
         <div class="feedback-markers">
           <button id="feedbackIn" type="button">IN setzen</button>
           <button id="feedbackOut" type="button">OUT setzen</button>
@@ -106,6 +109,8 @@
         <label for="feedbackProblem">Problem</label>
         <select id="feedbackProblem">
           <option value="unnötiger Abstecher">Unnötiger Abstecher</option>
+          <option value="unnötige Abkürzung">Unnötige Abkürzung</option>
+          <option value="zu viel Zig-Zag">Zu viel Zig-Zag</option>
           <option value="Hauptstraße">Hauptstraße</option>
           <option value="Sackgasse">Sackgasse / zurück</option>
           <option value="Schieben">Schiebepassage</option>
@@ -126,7 +131,11 @@
     <footer class="statsbar" aria-label="Streckendaten">
       <div><strong id="statDistance">0 km</strong><span>Distanz</span></div>
       <div><strong id="statAscent">0 hm</strong><span>Anstieg</span></div>
-      <svg id="profile" viewBox="0 0 400 80" preserveAspectRatio="none" aria-label="Höhenprofil"></svg>
+      <div class="scrub-overlay">
+        <svg id="profile" viewBox="0 0 400 80" preserveAspectRatio="none" aria-label="Höhenprofil"></svg>
+        <input id="feedbackScrubber" type="range" min="0" max="1000" value="0" aria-label="Route scrubben" />
+        <output id="feedbackPosition">Keine Route</output>
+      </div>
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

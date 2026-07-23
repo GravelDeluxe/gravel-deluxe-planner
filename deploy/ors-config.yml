@@ -2,7 +2,7 @@ ors:
   engine:
     profile_default:
       build:
-        source_file: /home/ors/files/stuttgart-regbez-latest.osm.pbf
+        source_file: /home/ors/files/baden-wuerttemberg-latest.osm.pbf
     profiles:
       driving-car:
         enabled: false

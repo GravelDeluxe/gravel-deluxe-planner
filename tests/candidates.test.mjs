@@ -104,3 +104,35 @@ test('rankRoundTripCandidates: bad feedback corridor lowers route rank', () => {
   assert.ok(ranked[0].reference.goodAffinity > 0);
   assert.ok(ranked[1].reference.badCoverage > 0);
 });
+
+test('rankRoundTripCandidates: extra kilometres beat excessive slope', () => {
+  const steep = {
+    ...candidate(40, 500, 'steep-in-range'),
+    route: {
+      distanceM: 40000,
+      ascendM: 500,
+      coords: [[49, 9, 100], [49.001, 9, 125], [49.002, 9, 125]],
+    },
+  };
+  const longer = {
+    ...candidate(62, 500, 'longer-but-flowing'),
+    route: {
+      distanceM: 62000,
+      ascendM: 500,
+      coords: [[49, 9, 100], [49.001, 9, 105], [49.002, 9, 108]],
+    },
+  };
+  const ranked = rankRoundTripCandidates(
+    [steep, longer],
+    {
+      minKm: 30,
+      maxKm: 50,
+      minHm: 200,
+      maxHm: 800,
+      maxSlopePercent: 10,
+    },
+  );
+  assert.equal(ranked[0].id, 'longer-but-flowing');
+  assert.equal(ranked[0].constraints.slopeAllowed, true);
+  assert.equal(ranked[0].distanceInRange, false);
+});

@@ -1,11 +1,18 @@
 import { TILE_URL, TILE_ATTRIBUTION, MAP_START, MAP_START_ZOOM } from './config.js';
 import { fetchRouteWithFallback } from './routing.js';
 import { profilePoints, svgPath } from './elevation.js';
-import { fetchRoundTripWithRetry, fetchRouteThroughWaypoints } from './ors.js';
-import { rankRoundTripCandidates } from './candidates.js';
+import {
+  feedbackAvoidPolygons,
+} from './reference-analysis.js';
+import {
+  fetchRoundTripWithRetry,
+  fetchRouteThroughWaypoints,
+  snapWaypoints,
+} from './ors.js';
+import { DIRECTION_BEARINGS, rankRoundTripCandidates } from './candidates.js';
 import { buildGravelDeluxeCustomModel } from './gravel-deluxe.js';
 import { buildHighlightWaypoints } from './highlights.js';
-import { generateCandidates } from './loop.js';
+import { generateCandidates, generateDirectionalCandidates } from './loop.js';
 import { searchPlace } from './search.js';
 import { listRoutes, saveRoute, deleteRoute } from './storage.js';
 import { toGpx, escapeXml } from './gpx.js';
@@ -14,7 +21,9 @@ import {
   distanceToIndex,
   buildBadPassage,
   buildFeedbackPayload,
+  feedbackFilename,
 } from './feedback.js';
+import { buildRouteDisplaySegments, directionArrowPoints } from './route-display.js';
 
 const map = L.map('map', { zoomControl: false }).setView(MAP_START, MAP_START_ZOOM);
 const tileLayer = L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
@@ -59,7 +68,9 @@ function refreshTilesSoon() {
   };
   setTimeout(check, 1000);
 }
-const routeLayer = L.polyline([], { color: '#c2410c', weight: 4 }).addTo(map);
+const routeLayer = L.polyline([], { color: '#c2410c', weight: 4, opacity: 0 }).addTo(map);
+let routeDisplayLayers = [];
+let routeDirectionMarkers = [];
 const feedbackCursor = L.circleMarker(MAP_START, {
   radius: 7, color: '#ffffff', weight: 2, fillColor: '#ea580c', fillOpacity: 1,
 });
@@ -115,7 +126,6 @@ function downloadText(content, type, filename) {
 }
 
 function clearFeedbackLayers() {
-  if (map.hasLayer(feedbackCursor)) feedbackCursor.remove();
   if (map.hasLayer(feedbackInMarker)) feedbackInMarker.remove();
   feedbackPassageLayers.forEach((layer) => layer.remove());
   feedbackPassageLayers = [];
@@ -135,9 +145,18 @@ function feedbackPoint(index = state.feedback.index) {
 
 function renderFeedback() {
   clearFeedbackLayers();
-  if (!state.feedback.active || !state.route?.coords?.length) return;
+  if (!state.route?.coords?.length) {
+    if (map.hasLayer(feedbackCursor)) feedbackCursor.remove();
+    renderStats();
+    return;
+  }
   const point = feedbackPoint();
   feedbackCursor.setLatLng([point[0], point[1]]).addTo(map);
+  const distanceKm = distanceToIndex(state.route.coords, state.feedback.index) / 1000;
+  el('feedbackPosition').textContent =
+    `${distanceKm.toFixed(1)} km · ${Math.round(point[2] ?? 0)} m`;
+  renderStats();
+  if (!state.feedback.active) return;
   if (state.feedback.inIndex !== null) {
     const inPoint = feedbackPoint(state.feedback.inIndex);
     feedbackInMarker.setLatLng([inPoint[0], inPoint[1]]).addTo(map);
@@ -145,12 +164,9 @@ function renderFeedback() {
   feedbackPassageLayers = state.feedback.passages.map((passage) =>
     L.polyline(
       passage.coords.map(([lat, lon]) => [lat, lon]),
-      { color: '#dc2626', weight: 7, opacity: 0.8 },
+      { color: '#facc15', weight: 8, opacity: 0.9 },
     ).addTo(map),
   );
-  const distanceKm = distanceToIndex(state.route.coords, state.feedback.index) / 1000;
-  el('feedbackPosition').textContent =
-    `Punkt ${state.feedback.index + 1}/${state.route.coords.length} · ${distanceKm.toFixed(1)} km`;
   el('feedbackPassages').innerHTML = state.feedback.passages
     .map(
       (passage, index) => `<div class="feedback-passage">
@@ -173,26 +189,97 @@ function renderStats() {
   const km = state.route ? state.route.distanceM / 1000 : 0;
   el('statDistance').textContent = `${km.toFixed(1)} km`;
   el('statAscent').textContent = `${Math.round(state.route?.ascendM ?? 0)} hm`;
-  el('profile').innerHTML = state.route
-    ? `<path d="${svgPath(profilePoints(state.route.coords), 400, 80)}" fill="none" stroke="#c2410c" stroke-width="2" />`
-    : '';
+  el('feedbackScrubber').disabled = !state.route;
+  if (!state.route) {
+    el('profile').innerHTML = '';
+    el('feedbackPosition').textContent = 'Keine Route';
+    return;
+  }
+  const points = profilePoints(state.route.coords);
+  const index = Math.min(state.feedback.index, points.length - 1);
+  const minElevation = Math.min(...points.map((point) => point.ele));
+  const maxElevation = Math.max(...points.map((point) => point.ele));
+  const elevationSpan = maxElevation - minElevation || 1;
+  const cursorX = 2 + points[index].d / Math.max(points.at(-1).d, 1) * 396;
+  const cursorY = 78 - (points[index].ele - minElevation) / elevationSpan * 76;
+  const markedRanges = [
+    ...state.feedback.passages.map((passage) => [passage.startIndex, passage.endIndex]),
+    ...(state.feedback.inIndex === null
+      ? []
+      : [[state.feedback.inIndex, state.feedback.index]]),
+  ].map(([from, to]) => {
+    const start = points[Math.min(from, to)]?.d ?? 0;
+    const end = points[Math.max(from, to)]?.d ?? start;
+    const x = 2 + start / Math.max(points.at(-1).d, 1) * 396;
+    const width = Math.max(2, (end - start) / Math.max(points.at(-1).d, 1) * 396);
+    return `<rect x="${x}" y="2" width="${width}" height="76" fill="#facc15" opacity="0.3" />`;
+  }).join('');
+  el('profile').innerHTML = `
+    ${markedRanges}
+    <path d="${svgPath(points, 400, 80)}" fill="none" stroke="#c2410c" stroke-width="2" />
+    <line x1="${cursorX}" y1="2" x2="${cursorX}" y2="78" stroke="#facc15" stroke-width="2" />
+    <circle cx="${cursorX}" cy="${cursorY}" r="4" fill="#facc15" stroke="#111827" stroke-width="1.5" />
+  `;
 }
 
 function renderRoute() {
+  routeDisplayLayers.forEach((layer) => layer.remove());
+  routeDirectionMarkers.forEach((marker) => marker.remove());
+  routeDisplayLayers = [];
+  routeDirectionMarkers = [];
   routeLayer.setLatLngs(state.route ? state.route.coords.map(([lat, lon]) => [lat, lon]) : []);
-  renderStats();
+  if (state.route) {
+    const displaySegments = buildRouteDisplaySegments(state.route, {
+      allowMeadowEarth: el('allowMeadowEarth').checked,
+      maxSlopePercent: Number(el('maxSlopePercent').value),
+    });
+    routeDisplayLayers = displaySegments.map((segment) => {
+      const warnings = [
+        segment.surfaceViolation && 'Wiese/Erde nicht erlaubt',
+        segment.slopeViolation && `Steigung bis ${segment.maximumGrade.toFixed(1)} %`,
+      ].filter(Boolean);
+      return L.polyline(
+        segment.coords.map(([lat, lon]) => [lat, lon]),
+        { color: segment.color, weight: warnings.length ? 7 : 5, opacity: 0.9 },
+      )
+        .bindTooltip(
+          `${segment.surfaceName}${warnings.length ? ` · ${warnings.join(' · ')}` : ''}`,
+          { sticky: true },
+        )
+        .addTo(map);
+    });
+    routeDirectionMarkers = directionArrowPoints(state.route.coords).map(({ point, bearing }) =>
+      L.marker([point[0], point[1]], {
+        interactive: false,
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="route-direction-arrow" style="transform:rotate(${bearing}deg)">▲</div>`,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
+        }),
+      }).addTo(map));
+  }
+  renderFeedback();
 }
 
 function renderMarkers() {
   state.markers.forEach((m) => m.remove());
   state.markers = state.waypoints.map((wp, i) => {
-    const marker = L.marker(wp, { draggable: true }).addTo(map);
+    const marker = L.marker(wp, {
+      draggable: true,
+      bubblingMouseEvents: false,
+    }).addTo(map);
     marker.on('dragend', () => {
       const { lat, lng } = marker.getLatLng();
       state.waypoints[i] = [lat, lng];
       reroute();
     });
-    marker.on('click', () => {
+    marker.on('click', (event) => {
+      if (event.originalEvent) L.DomEvent.stopPropagation(event.originalEvent);
+      // Der einzelne Marker im Rundenmodus ist der Start/Home-Base-Punkt.
+      // Ein Klick darauf darf ihn weder löschen noch über den Karten-Klick
+      // unmittelbar wieder neu setzen.
+      if (state.mode === 'loop') return;
       state.waypoints.splice(i, 1);
       reroute();
     });
@@ -334,11 +421,14 @@ el('routingProfile').addEventListener('change', () => {
   }
 });
 
+el('allowMeadowEarth').addEventListener('change', renderRoute);
+el('maxSlopePercent').addEventListener('input', renderRoute);
+
 function renderSuggestions(activeIndex = -1) {
   el('suggestions').innerHTML = state.candidates
     .map(
       (c, i) => `<button type="button" class="suggestion${i === activeIndex ? ' active' : ''}" data-i="${i}">
-        ${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.reference?.goodAffinity ? ` · Referenz ${Math.round(c.reference.goodAffinity * 100)} %` : ''}${c.reference?.badCoverage ? ` · ⚠ ${Math.round(c.reference.badCoverage * 100)} % Feedback` : ''}${!c.constraints?.surfaceAvailable && !el('allowMeadowEarth').checked ? ' · ⚠ Oberfläche nicht prüfbar' : ''}${c.inRange ? '' : ` (außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm', !c.constraints?.surfaceAllowed && 'Wiese/Erde', !c.constraints?.slopeAllowed && `Steigung ${c.constraints.maximumGrade.toFixed(1)} %`].filter(Boolean).join(' + ')})`}
+        ${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.reference?.goodAffinity ? ` · Referenz ${Math.round(c.reference.goodAffinity * 100)} %` : ''}${c.reference?.badCoverage ? ` · ⚠ ${Math.round(c.reference.badCoverage * 100)} % Feedback` : ''}${c.flow?.reversals || c.flow?.repeatedShare > 0.02 ? ' · ⚠ Fahrfluss' : ''}${!c.constraints?.surfaceAvailable && !el('allowMeadowEarth').checked ? ' · ⚠ Oberfläche nicht prüfbar' : ''}${c.inRange ? '' : ` (außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm', !c.constraints?.surfaceAllowed && 'Wiese/Erde', !c.constraints?.slopeAllowed && `Steigung ${c.constraints.maximumGrade.toFixed(1)} %`].filter(Boolean).join(' + ')})`}
       </button>`,
     )
     .join('');
@@ -440,7 +530,7 @@ el('feedbackExport').addEventListener('click', () => {
   downloadText(
     `${JSON.stringify(payload, null, 2)}\n`,
     'application/json',
-    `${safeFilename(routeName)}__feedback.json`,
+    feedbackFilename(routeName),
   );
   setStatus('Feedback mit vollständiger Route und markierten Passagen heruntergeladen.');
 });
@@ -456,19 +546,37 @@ async function roundTripCandidates(
   direction,
   { customModel, highlights, allowMeadowEarth, maxSlopePercent },
 ) {
-  const baseLengths = [minKm, (minKm + maxKm) / 2, maxKm];
+  const referenceModel = await referenceModelPromise;
+  const avoidPolygons = feedbackAvoidPolygons(
+    referenceModel,
+    [start, ...highlights],
+  );
+  const routeThroughSnappedWaypoints = async (waypoints) => {
+    const snapped = await snapWaypoints(waypoints, { radiusM: 2500 });
+    return fetchRouteThroughWaypoints(snapped, { customModel, avoidPolygons });
+  };
+  const expandedMaxKm = Math.min(300, maxKm * 1.5);
+  const baseLengths = [
+    minKm,
+    (minKm + maxKm) / 2,
+    maxKm,
+    Math.min(300, maxKm * 1.25),
+    expandedMaxKm,
+  ];
   const lengthsKm = [...baseLengths, ...baseLengths];
   let firstError;
-  const results = await Promise.all(
+  const guidedShape = direction !== 'any' || highlights.length > 0;
+  const results = guidedShape ? [] : await Promise.all(
     lengthsKm.map(async (km) => {
       try {
         let route = await fetchRoundTripWithRetry(start, {
           lengthM: km * 1000,
           customModel,
+          avoidPolygons,
         });
         if (highlights.length) {
           const viaPoints = buildHighlightWaypoints(start, route.coords, highlights);
-          route = await fetchRouteThroughWaypoints(viaPoints, { customModel });
+          route = await routeThroughSnappedWaypoints(viaPoints);
         }
         const snappedStart = route.coords.length
           ? [route.coords[0][0], route.coords[0][1]]
@@ -484,6 +592,46 @@ async function roundTripCandidates(
     }),
   );
   let valid = results.filter(Boolean);
+  if (guidedShape) {
+    const bearingDeg = direction === 'any'
+      ? 0
+      : DIRECTION_BEARINGS[direction];
+    try {
+      const guided = await generateDirectionalCandidates(
+        start,
+        {
+          minKm,
+          maxKm: expandedMaxKm,
+          bearingDeg,
+          count: 9,
+          maxIter: 3,
+        },
+        routeThroughSnappedWaypoints,
+      );
+      valid = await Promise.all(
+        guided.map(async (candidate) => {
+          let route = candidate.route;
+          if (highlights.length) {
+            const viaPoints = buildHighlightWaypoints(start, route.coords, highlights);
+            route = await routeThroughSnappedWaypoints(viaPoints);
+          }
+          return {
+            route: { ...route, profile: 'ors-gravel-deluxe' },
+            // Geometrische ORS-Formpunkte sind interne Planungsdetails. In der
+            // UI bleibt nur der tatsächliche Startmarker sichtbar/editierbar.
+            waypoints: [[route.coords[0][0], route.coords[0][1]]],
+          };
+        }),
+      );
+    } catch (guidedError) {
+      firstError = guidedError;
+    }
+  }
+  if (guidedShape && !valid.length) {
+    throw new Error(
+      `Gerichtete Runde konnte nicht erzeugt werden: ${firstError?.message ?? 'unbekannter ORS-Fehler'}`,
+    );
+  }
   if (!valid.length) {
     // Fallback für Gebiete, in denen der native ORS-Rundtouralgorithmus seine
     // zufälligen internen Punkte nicht auf den Graphen bekommt. Die Geometrie
@@ -499,18 +647,18 @@ async function roundTripCandidates(
           n: 3,
           maxIter: 3,
         },
-        (waypoints) => fetchRouteThroughWaypoints(waypoints, { customModel }),
+        routeThroughSnappedWaypoints,
       );
       valid = await Promise.all(
         fallback.map(async (candidate) => {
           let route = candidate.route;
           if (highlights.length) {
             const viaPoints = buildHighlightWaypoints(start, route.coords, highlights);
-            route = await fetchRouteThroughWaypoints(viaPoints, { customModel });
+            route = await routeThroughSnappedWaypoints(viaPoints);
           }
           return {
             route: { ...route, profile: 'ors-gravel-deluxe' },
-            waypoints: candidate.waypoints,
+            waypoints: [[route.coords[0][0], route.coords[0][1]]],
           };
         }),
       );
@@ -521,7 +669,6 @@ async function roundTripCandidates(
       );
     }
   }
-  const referenceModel = await referenceModelPromise;
   return rankRoundTripCandidates(
     valid,
     {

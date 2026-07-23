@@ -36,7 +36,15 @@ die Oberflächenvorgabe.
 Die Rundenerzeugung bevorzugt die native ORS-`round_trip`-Funktion. Scheitern
 alle Seeds an nicht routbaren internen Zufallspunkten, erzeugt `js/loop.js`
 geometrische Via-Punkte; ORS übernimmt weiterhin die vollständige Wegwahl
-zwischen diesen Punkten.
+zwischen diesen Punkten. Vorher zieht der ORS-Snap-Endpunkt die Luftlinienpunkte
+auf routbare Kanten; das verhindert 404-Fehler durch Punkte in Wald oder Feld.
+Der Graph basiert auf dem vollständigen Baden-Württemberg-PBF, damit die Home
+Base nicht an einer künstlichen Extraktgrenze liegt.
+
+Bei gewählter Himmelsrichtung erzeugt `generateDirectionalCandidates` keine
+symmetrische Runde um den Start, sondern eine tropfenförmige Grundgeometrie im
+gewählten Sektor. Highlights werden danach entlang dieser Grundroute
+einsortiert, um lange Hin-und-zurück-Abstecher zu vermeiden.
 
 `scripts/analyze-references.mjs` verarbeitet gute GPX-Dateien und
 `graveldeluxe-route-feedback/v1` aus `gpx-samples/`. Das reproduzierbare

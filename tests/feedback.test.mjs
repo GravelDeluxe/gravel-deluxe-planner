@@ -5,6 +5,7 @@ import {
   distanceToIndex,
   buildBadPassage,
   buildFeedbackPayload,
+  feedbackFilename,
 } from '../js/feedback.js';
 
 const coords = [
@@ -48,7 +49,13 @@ test('buildBadPassage: requires two distinct marks', () => {
 test('buildFeedbackPayload: includes full route and marked passages', () => {
   const passage = buildBadPassage(coords, 1, 2, { problem: 'Oberfläche' });
   const payload = buildFeedbackPayload(
-    { coords, profile: 'ors-gravel-deluxe', distanceM: 500, ascendM: 20 },
+    {
+      coords,
+      profile: 'ors-gravel-deluxe',
+      distanceM: 500,
+      ascendM: 20,
+      surfaceSegments: [[0, 2, 10]],
+    },
     [passage],
     { routeName: 'Test-Runde' },
   );
@@ -57,4 +64,24 @@ test('buildFeedbackPayload: includes full route and marked passages', () => {
   assert.equal(payload.route.profile, 'ors-gravel-deluxe');
   assert.equal(payload.passages.length, 1);
   assert.equal(payload.metadata.routeName, 'Test-Runde');
+  assert.deepEqual(payload.route.surfaceSegments, [[0, 2, 10]]);
+});
+
+test('buildBadPassage: preserves shortcut and zig-zag problem categories', () => {
+  assert.equal(
+    buildBadPassage(coords, 0, 2, { problem: 'unnötige Abkürzung' }).problem,
+    'unnötige Abkürzung',
+  );
+  assert.equal(
+    buildBadPassage(coords, 1, 3, { problem: 'zu viel Zig-Zag' }).problem,
+    'zu viel Zig-Zag',
+  );
+});
+
+test('feedbackFilename: includes a unique local timestamp and safe route name', () => {
+  const filename = feedbackFilename(
+    'Nord / Runde',
+    new Date(2026, 6, 23, 21, 7, 9),
+  );
+  assert.equal(filename, '20260723-210709__Nord-Runde__feedback.json');
 });

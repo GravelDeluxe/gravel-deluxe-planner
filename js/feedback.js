@@ -46,8 +46,27 @@ export function buildFeedbackPayload(route, passages, metadata = {}) {
       distanceM: route.distanceM,
       ascendM: route.ascendM,
       coords: route.coords.map((point) => point.slice(0, 3)),
+      surfaceSegments: (route.surfaceSegments ?? []).map((segment) => [...segment]),
     },
     passages,
     metadata,
   };
+}
+
+export function feedbackFilename(routeName, date = new Date()) {
+  const stamp = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+    '-',
+    String(date.getHours()).padStart(2, '0'),
+    String(date.getMinutes()).padStart(2, '0'),
+    String(date.getSeconds()).padStart(2, '0'),
+  ].join('');
+  const safeName = String(routeName || 'GravelDeluxe-Runde')
+    .normalize('NFKD')
+    .replace(/[^\w.-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'GravelDeluxe-Runde';
+  return `${stamp}__${safeName}__feedback.json`;
 }

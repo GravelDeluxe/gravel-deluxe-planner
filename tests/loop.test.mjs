@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateCandidates } from '../js/loop.js';
+import {
+  directionalLoopWaypoints,
+  generateCandidates,
+  generateDirectionalCandidates,
+} from '../js/loop.js';
 import { haversineM } from '../js/geo.js';
 
 // Fake router: circle -> ring circumference * 1.3; oneway -> straight line * 1.3.
@@ -98,4 +102,31 @@ test('mixed candidate set sorts in-range candidates first', async () => {
   assert.equal(cands.length, 3);
   assert.equal(cands[0].inRange, true);
   assert.equal(cands[cands.length - 1].inRange, false);
+});
+
+test('directionalLoopWaypoints: north loop stays north of its start', () => {
+  const start = [49, 9];
+  const waypoints = directionalLoopWaypoints(start, 40, 0);
+  assert.deepEqual(waypoints[0], start);
+  assert.deepEqual(waypoints.at(-1), start);
+  for (const point of waypoints.slice(1, -1)) {
+    assert.ok(point[0] > start[0], `point is not north: ${point}`);
+  }
+});
+
+test('generateDirectionalCandidates: creates closed candidates in target range', async () => {
+  const start = [49, 9];
+  const routeFn = async (waypoints) => ({
+    distanceM: 40000,
+    ascendM: 300,
+    coords: waypoints.map(([lat, lon]) => [lat, lon, 100]),
+  });
+  const candidates = await generateDirectionalCandidates(
+    start,
+    { minKm: 30, maxKm: 50, bearingDeg: 0, count: 3 },
+    routeFn,
+  );
+  assert.equal(candidates.length, 3);
+  assert.ok(candidates.every((candidate) => candidate.inRange));
+  assert.ok(candidates.every((candidate) => candidate.waypoints[1][0] > start[0]));
 });
