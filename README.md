@@ -9,6 +9,29 @@ manuelle Strecken sowie geschlossene Rundtouren mit dem gewählten Profil.
 > **Hinweis:** Das Profil `gravel-konstant` benötigt den mitgelieferten eigenen
 > BRouter. Der lokale Komplettstart erfolgt mit `make setup`.
 
+## Herkunft und Dank
+
+Dieses Projekt basiert auf dem Open-Source-Projekt
+[DerRemo/gravel-planner](https://github.com/DerRemo/gravel-planner). Vielen Dank
+an DerRemo für den ursprünglichen Gravel-Routenplaner, die schlanke
+HTML-/CSS-/JavaScript-Basis und die Veröffentlichung unter der MIT-Lizenz.
+
+**GravelDeluxe** führt diese Arbeit als eigene Erweiterung fort. Der
+ursprüngliche Planer bleibt als Grundlage erkennbar; hinzu kommen insbesondere:
+
+- ein lokal betriebener BRouter mit eigenem GravelDeluxe-Profil;
+- ein selbst gehosteter
+  [openrouteservice](https://github.com/GIScience/openrouteservice) ohne
+  externen API-Key;
+- das ORS-Profil `gravel-deluxe` mit eigenem Custom-Model;
+- Rundkursvorgaben für Distanz, Höhenmeter und grobe Himmelsrichtung;
+- lokale OSM-/Routingdaten sowie ein reproduzierbarer Komplettstart;
+- Docker-Compose-, Portainer- und Watchtower-Konfiguration für den
+  Serverbetrieb.
+
+Änderungen des GravelDeluxe-Projekts sind keine offiziellen Änderungen oder
+Empfehlungen des ursprünglichen Autors.
+
 ## Features
 
 - **Strecke**: Start- und Endpunkt (plus optionale Zwischenpunkte) auf die Karte
@@ -33,8 +56,8 @@ manuelle Strecken sowie geschlossene Rundtouren mit dem gewählten Profil.
 
 ### Starten
 
-    git clone https://github.com/DerRemo/gravel-planner.git
-    cd gravel-planner
+    git clone https://github.com/GravelDeluxe/gravel-deluxe-planner.git
+    cd gravel-deluxe-planner
     npm run serve        # oder: python3 serve.py 8123
     # http://localhost:8123 im Browser öffnen
 
