@@ -166,6 +166,7 @@ button:focus-visible {
   box-shadow: var(--shadow-glow);
   white-space: nowrap;
 }
+#generateLoop { width: 100%; }
 #searchButton:hover,
 #generateLoop:hover { background: var(--accent-hover); }
 #searchButton:active,

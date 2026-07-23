@@ -6,7 +6,7 @@
 make validate
 ```
 
-Aktueller Stand: 51 Node-Tests, BRouter-Profilintegrität und eine reale
+Aktueller Stand: 56 Node-Tests, BRouter-Profilintegrität und eine reale
 Freiburg–Schwarzwald-Route mit `gravel-konstant` erfolgreich geprüft.
 
 ## Profilprüfung
@@ -36,5 +36,7 @@ Zu protokollieren:
 - Beim öffentlichen BRouter erscheint der Fallback-Hinweis.
 - Im Container wird `/brouter` verwendet.
 - Auswahländerung routet eine bestehende manuelle Strecke neu.
-- Rundenmodus erzeugt drei geschlossene Kandidaten über die selbst gehostete
-  ORS-Instanz mit `cycling-mountain` und benötigt keinen API-Key.
+- Rundenmodus erzeugt sechs Varianten über das selbst gehostete ORS-Profil
+  `gravel-deluxe`, bewertet Distanz und Höhenmeter und zeigt die besten drei.
+- `make smoke-ors` sendet eine echte Rundtour-Anfrage samt Custom-Model; dafür
+  ist kein API-Key nötig.

@@ -24,12 +24,11 @@ export const TILE_ATTRIBUTION =
 
 export const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org/search';
 
-// OpenRouteService: natives round_trip für Auto-Runden. Kein Gravel-Profil,
-// cycling-mountain bevorzugt Tracks/Waldwege (bestes Gravel-Proxy bei ORS).
-// Der API-Key liegt im localStorage ('ors.key'), nicht hier — kein Secret im Repo.
+// OpenRouteService: natives round_trip über das selbst gehostete Profil.
+// Der API-Key liegt bei externem ORS im localStorage, nie im Repo.
 export const ORS_BASE = runtimeConfig.orsBase ?? 'https://api.openrouteservice.org';
 export const ORS_REQUIRES_KEY = runtimeConfig.orsRequiresKey ?? true;
-export const ORS_PROFILE = 'cycling-mountain';
+export const ORS_PROFILE = 'gravel-deluxe';
 
 export const HOME_BASE = Object.freeze({
   name: 'Home Base',

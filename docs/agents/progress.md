@@ -17,7 +17,7 @@ Stand: 2026-07-23
 - Nginx-Reverse-Proxy für einen gemeinsamen Browser-Ursprung erstellt.
 - GitLab-CI für Tests sowie Build/Push beider Images erstellt.
 - Portainer-Stack mit Host-Volumes und scoped Watchtower erstellt.
-- JavaScript-Teststand: 51 Tests erfolgreich.
+- JavaScript-Teststand: 56 Tests erfolgreich.
 - Compose-Datei erfolgreich mit `docker compose config` geprüft.
 - Agentenkontext token-sparend in `AGENTS.md` und thematische Dateien unter
   `docs/agents/` aufgeteilt.
@@ -42,6 +42,16 @@ Stand: 2026-07-23
 - Home Base offline aus OSM ermittelt und als Standardstart gesetzt:
   `49.2442844, 9.1129218`; Standardmodus „Runde“, Standardauswahl
   „Gravel GravelDeluxe“.
+- Eigenes ORS-Profil `gravel-deluxe` auf Basis des Encoders
+  `cycling-mountain` eingerichtet; Custom-Models sind beim Graphaufbau aktiv.
+- GravelDeluxe-Custom-Model ergänzt: Hauptstraßen, Stufen, Schiebepassagen und
+  sehr schlechte Wege werden abgewertet; ein paralleler guter Radweg wird
+  gegenüber einem Track bevorzugt.
+- Mindest- und Maximalwerte für Höhenmeter in der Rundenoberfläche ergänzt.
+  Sechs Varianten werden gemeinsam nach Distanz und Höhenmetern bewertet, die
+  drei bestpassenden angezeigt und Zielabweichungen getrennt markiert.
+- Automatischer ORS-Smoke-Test prüft jetzt eine echte Runde über
+  `/ors/v2/directions/gravel-deluxe/geojson`.
 
 ## Noch offen vor Abschluss von Phase 1
 
@@ -51,6 +61,8 @@ Stand: 2026-07-23
 - Beispielstrecken gegen `gravel` und `gravel-konstant` real berechnen und
   Resultate dokumentieren.
 - UI einmal visuell im Browser prüfen.
+- Neuen ORS-Graph bei laufendem Docker bauen und `make smoke-ors` ausführen
+  (Docker Desktop war bei der Implementierung nicht gestartet).
 
 ## Phase 2
 

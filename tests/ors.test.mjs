@@ -15,6 +15,13 @@ test('buildRoundTripBody: single [lon, lat] coordinate + round_trip options', ()
   const body = buildRoundTripBody([50.1, 8.6], { lengthM: 40000, seed: 7, points: 5 });
   assert.deepEqual(body.coordinates, [[8.6, 50.1]]);
   assert.deepEqual(body.options.round_trip, { length: 40000, points: 5, seed: 7 });
+  assert.equal(body.preference, 'recommended');
+  assert.ok(body.custom_model.priority.length > 0);
+  assert.ok(
+    body.custom_model.priority.some(
+      (rule) => rule.if === 'road_class == TRACK' && rule.multiply_by < 1,
+    ),
+  );
   assert.equal(body.elevation, true);
   assert.equal(body.instructions, false);
 });
@@ -49,11 +56,25 @@ test('fetchRoundTrip: POSTs to profile endpoint with Authorization header', asyn
     return { ok: true, json: async () => okGeojson };
   };
   const r = await fetchRoundTrip([50.1, 8.6], { lengthM: 40000, seed: 3, key: 'abc123', fetchImpl });
-  assert.match(seen.url, /\/v2\/directions\/cycling-mountain\/geojson$/);
+  assert.match(seen.url, /\/v2\/directions\/gravel-deluxe\/geojson$/);
   assert.equal(seen.opts.method, 'POST');
   assert.equal(seen.opts.headers.Authorization, 'abc123');
   assert.match(seen.opts.headers['Content-Type'], /application\/json/);
   assert.equal(r.distanceM, 41234.5);
+});
+
+test('fetchRoundTrip: allows overriding the custom model for diagnostics', async () => {
+  let body;
+  const fetchImpl = async (_url, opts) => {
+    body = JSON.parse(opts.body);
+    return { ok: true, json: async () => okGeojson };
+  };
+  const customModel = { distance_influence: 42 };
+  await fetchRoundTrip(
+    [50.1, 8.6],
+    { lengthM: 40000, seed: 3, customModel, requiresKey: false, fetchImpl },
+  );
+  assert.deepEqual(body.custom_model, customModel);
 });
 
 test('fetchRoundTrip: missing key throws before any request', async () => {

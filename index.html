@@ -46,8 +46,13 @@
         <div class="search-row">
           <input id="loopKmMin" type="number" min="5" max="300" value="30" aria-label="Minimum km" />
           <input id="loopKmMax" type="number" min="5" max="300" value="50" aria-label="Maximum km" />
-          <button id="generateLoop" type="button">Vorschläge</button>
         </div>
+        <label for="loopHmMin">Höhenmeterbereich (hm)</label>
+        <div class="search-row">
+          <input id="loopHmMin" type="number" min="0" max="10000" step="50" value="200" aria-label="Minimum Höhenmeter" />
+          <input id="loopHmMax" type="number" min="0" max="10000" step="50" value="800" aria-label="Maximum Höhenmeter" />
+        </div>
+        <button id="generateLoop" type="button">GravelDeluxe-Vorschläge</button>
         <div id="suggestions" aria-label="Routen-Vorschläge"></div>
       </div>
 

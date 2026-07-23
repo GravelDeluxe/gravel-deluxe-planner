@@ -13,8 +13,9 @@ manuelle Strecken sowie geschlossene Rundtouren mit dem gewählten Profil.
 
 - **Strecke**: Start- und Endpunkt (plus optionale Zwischenpunkte) auf die Karte
   klicken → Routing entlang Gravel-Wegen (BRouter); Marker ziehen/löschen, Zurück, Umkehren.
-- **Runde**: einen Startpunkt + Distanzbereich → 3 geschlossene
-  Rundtouren über den selbst gehosteten ORS, klickbar.
+- **Runde**: einen Startpunkt sowie Distanz- und Höhenmeterbereich wählen →
+  die drei bestpassenden geschlossenen Rundtouren über den selbst gehosteten
+  ORS erhalten.
 - Distanz, Höhenmeter (für Runden robust aus verrauschten SRTM-Höhen berechnet:
   Void-Füllung → Median-Filter → Anstieg per Hysterese), Höhenprofil.
 - Ortssuche (Nominatim), Speichern (localStorage), GPX-Export.
@@ -62,8 +63,12 @@ Rampen. Das Profil benötigt einen eigenen BRouter; auf der öffentlichen Instan
 fällt die App automatisch auf `gravel` zurück.
 
 Die App startet im Modus „Runde“ an der Home Base in Bad Rappenau. Rundtouren
-kommen aus der selbst gehosteten ORS-Instanz mit `cycling-mountain`; manuelle
-Strecken verwenden das ausgewählte BRouter-Profil.
+kommen aus dem eigenen ORS-Profil `gravel-deluxe`. Es basiert auf dem
+`cycling-mountain`-Encoder und ergänzt ein Custom-Model: Hauptstraßen,
+Schiebepassagen, Stufen und unpassierbare Wege werden stark abgewertet; ein
+guter paralleler Radweg gewinnt knapp gegen einen Track. Sechs Varianten werden
+nach Distanz und Höhenmetern bewertet, die besten drei angezeigt. Manuelle
+Strecken verwenden weiterhin das ausgewählte BRouter-Profil.
 
 Für den Serverbetrieb stehen zwei Container-Images, eine GitLab-CI-Pipeline und
 ein Portainer-Stack mit Watchtower bereit. Einrichtung, Volumes, Parameter und

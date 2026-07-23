@@ -2,6 +2,7 @@ import { TILE_URL, TILE_ATTRIBUTION, MAP_START, MAP_START_ZOOM } from './config.
 import { fetchRouteWithFallback } from './routing.js';
 import { profilePoints, svgPath } from './elevation.js';
 import { fetchRoundTrip } from './ors.js';
+import { rankRoundTripCandidates } from './candidates.js';
 import { searchPlace } from './search.js';
 import { listRoutes, saveRoute, deleteRoute } from './storage.js';
 import { toGpx, escapeXml } from './gpx.js';
@@ -176,7 +177,7 @@ el('routingProfile').addEventListener('change', () => {
   state.routingProfile = el('routingProfile').value;
   if (state.mode === 'manual' && state.waypoints.length >= 2) reroute();
   else if (state.mode === 'loop') {
-    setStatus('Runden werden mit dem lokalen ORS-Profil „cycling-mountain“ erzeugt.');
+    setStatus('Runden werden mit dem lokalen ORS-Profil „GravelDeluxe“ erzeugt.');
   }
 });
 
@@ -184,7 +185,7 @@ function renderSuggestions(activeIndex = -1) {
   el('suggestions').innerHTML = state.candidates
     .map(
       (c, i) => `<button type="button" class="suggestion${i === activeIndex ? ' active' : ''}" data-i="${i}">
-        ${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.inRange ? '' : ' (außerhalb Bereich)'}
+        ${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.inRange ? '' : ` (außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm'].filter(Boolean).join(' + ')})`}
       </button>`,
     )
     .join('');
@@ -202,7 +203,11 @@ function selectCandidate(i) {
   renderSuggestions(i);
   map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
   refreshTilesSoon();
-  setStatus(c.inRange ? '' : `Außerhalb des Bereichs: ${(c.route.distanceM / 1000).toFixed(1)} km.`);
+  const misses = [
+    !c.distanceInRange && `${(c.route.distanceM / 1000).toFixed(1)} km`,
+    !c.ascentInRange && `${Math.round(c.route.ascendM)} hm`,
+  ].filter(Boolean);
+  setStatus(c.inRange ? '' : `Beste verfügbare Runde außerhalb des Zielbereichs: ${misses.join(', ')}.`);
 }
 
 el('suggestions').addEventListener('click', (e) => {
@@ -210,9 +215,12 @@ el('suggestions').addEventListener('click', (e) => {
   if (btn) selectCandidate(Number(btn.dataset.i));
 });
 
-// Drei native ORS-Rundtouren. Die lokale Instanz braucht keinen API-Key.
-async function roundTripCandidates(start, minKm, maxKm) {
-  const lengthsKm = [minKm, (minKm + maxKm) / 2, maxKm];
+// Sechs native ORS-Rundtouren erzeugen und nach Distanz UND Höhenmetern
+// bewerten. Die drei besten werden angezeigt; die lokale Instanz braucht keinen Key.
+async function roundTripCandidates(start, minKm, maxKm, minHm, maxHm) {
+  const baseLengths = [minKm, (minKm + maxKm) / 2, maxKm];
+  const lengthsKm = [...baseLengths, ...baseLengths];
+  let firstError;
   const results = await Promise.all(
     lengthsKm.map(async (km) => {
       try {
@@ -221,22 +229,22 @@ async function roundTripCandidates(start, minKm, maxKm) {
           seed: Math.floor(Math.random() * 100000),
           points: 5,
         });
-        const distKm = route.distanceM / 1000;
         const snappedStart = route.coords.length
           ? [route.coords[0][0], route.coords[0][1]]
           : start;
         return {
-          route: { ...route, profile: 'ors-cycling-mountain' },
+          route: { ...route, profile: 'ors-gravel-deluxe' },
           waypoints: [snappedStart],
-          distKm,
-          inRange: distKm >= minKm && distKm <= maxKm,
         };
-      } catch {
+      } catch (err) {
+        firstError ??= err;
         return null;
       }
     }),
   );
-  return results.filter(Boolean).sort((a, b) => Number(b.inRange) - Number(a.inRange));
+  const valid = results.filter(Boolean);
+  if (!valid.length && firstError) throw firstError;
+  return rankRoundTripCandidates(valid, { minKm, maxKm, minHm, maxHm });
 }
 
 el('generateLoop').addEventListener('click', async () => {
@@ -244,15 +252,20 @@ el('generateLoop').addEventListener('click', async () => {
   const start = state.waypoints[0];
   const minKm = Number(el('loopKmMin').value);
   const maxKm = Number(el('loopKmMax').value);
+  const minHm = Number(el('loopHmMin').value);
+  const maxHm = Number(el('loopHmMax').value);
   if (!start) return setStatus('Zuerst Startpunkt auf die Karte klicken.');
   if (!(minKm >= 5 && maxKm <= 300 && minKm < maxKm)) {
     return setStatus('Ungültiger Distanzbereich (5–300 km, min < max).');
+  }
+  if (!(minHm >= 0 && maxHm <= 10000 && minHm <= maxHm)) {
+    return setStatus('Ungültiger Höhenmeterbereich (0–10.000 hm, min ≤ max).');
   }
   const seq = ++requestSeq;
   state.busy = true;
   setStatus('Vorschläge werden erzeugt …');
   try {
-    const candidates = await roundTripCandidates(start, minKm, maxKm);
+    const candidates = await roundTripCandidates(start, minKm, maxKm, minHm, maxHm);
     if (seq !== requestSeq) return;
     if (!candidates.length) throw new Error('Keine Runde gefunden');
     state.candidates = candidates;

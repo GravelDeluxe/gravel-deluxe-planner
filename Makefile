@@ -86,12 +86,22 @@ smoke: doctor
 	@echo "Profil akzeptiert; Teststrecke wurde erfolgreich berechnet."
 
 smoke-ors: doctor
-	@echo "Prüfe lokale OpenRouteService-Instanz ..."
+	@echo "Prüfe lokale OpenRouteService-Instanz und GravelDeluxe-Custom-Model ..."
 	@curl --fail --silent --show-error \
 		--retry 80 --retry-all-errors --retry-delay 5 \
 		"$(APP_URL)/ors/v2/health"
 	@echo ""
-	@echo "OpenRouteService ist bereit."
+	@curl --fail --silent --show-error \
+		--header "Content-Type: application/json" \
+		--data-binary "@tests/fixtures/ors-gravel-deluxe-request.json" \
+		--output /tmp/gravel-router-ors-smoke.json \
+		"$(APP_URL)/ors/v2/directions/gravel-deluxe/geojson"
+	@rg -q '"features"' /tmp/gravel-router-ors-smoke.json || { \
+		echo "Fehler: ORS-Antwort enthält keine GravelDeluxe-Runde."; \
+		sed -n '1,40p' /tmp/gravel-router-ors-smoke.json; \
+		exit 1; \
+	}
+	@echo "OpenRouteService und GravelDeluxe-Custom-Model sind bereit."
 
 test:
 	npm test
