@@ -43,6 +43,7 @@ services:
       ors.engine.profiles.gravel-deluxe.build.encoder_options.enable_custom_models: "true"
     volumes:
       - "${ORS_DATA_PATH:-/mnt/gravel-router/ors}/config:/home/ors/config"
+      - "./ors-config.yml:/home/ors/config/ors-config.yml:ro"
       - "${ORS_DATA_PATH:-/mnt/gravel-router/ors}/elevation_cache:/home/ors/elevation_cache"
       - "${ORS_DATA_PATH:-/mnt/gravel-router/ors}/files:/home/ors/files"
       - "${ORS_DATA_PATH:-/mnt/gravel-router/ors}/graphs:/home/ors/graphs"

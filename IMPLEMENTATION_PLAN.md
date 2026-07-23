@@ -174,6 +174,18 @@ Das Profil bietet einfache Regler statt technischer Profilparameter:
 - Rundkurs: möglichst abwechslungsreich / neutral;
 - Distanz und Höhenmeterziel.
 
+### Vorgemerkt: Route mit editierbaren Wegpunkten laden
+
+Eine vorhandene GPX- oder Feedbackroute soll später als editierbare Planung
+geladen werden. Aus der Geometrie werden Start, Ende, vorhandene Highlights und
+geeignete Stützpunkte rekonstruiert. Nutzer können diese Wegpunkte verschieben,
+ergänzen oder löschen; anschließend erzeugt und bewertet der GravelDeluxe-
+Algorithmus optimierte Varianten, ohne zwingende Highlights zu verlieren.
+
+Diese Funktion ist bewusst noch nicht Teil des aktuellen GPX-Analyseimports:
+Der Import dient derzeit dem Referenzmodell, nicht der interaktiven
+Neuoptimierung einer einzelnen Route.
+
 Die erweiterten Gewichtungen bleiben als Experteneinstellungen verfügbar, werden aber mit verständlichen Beschreibungen versehen.
 
 ## Phase 6 – Testen und Kalibrieren

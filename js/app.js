@@ -1,11 +1,20 @@
 import { TILE_URL, TILE_ATTRIBUTION, MAP_START, MAP_START_ZOOM } from './config.js';
 import { fetchRouteWithFallback } from './routing.js';
 import { profilePoints, svgPath } from './elevation.js';
-import { fetchRoundTrip } from './ors.js';
+import { fetchRoundTripWithRetry, fetchRouteThroughWaypoints } from './ors.js';
 import { rankRoundTripCandidates } from './candidates.js';
+import { buildGravelDeluxeCustomModel } from './gravel-deluxe.js';
+import { buildHighlightWaypoints } from './highlights.js';
+import { generateCandidates } from './loop.js';
 import { searchPlace } from './search.js';
 import { listRoutes, saveRoute, deleteRoute } from './storage.js';
 import { toGpx, escapeXml } from './gpx.js';
+import {
+  routeIndexFromProgress,
+  distanceToIndex,
+  buildBadPassage,
+  buildFeedbackPayload,
+} from './feedback.js';
 
 const map = L.map('map', { zoomControl: false }).setView(MAP_START, MAP_START_ZOOM);
 const tileLayer = L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
@@ -51,12 +60,22 @@ function refreshTilesSoon() {
   setTimeout(check, 1000);
 }
 const routeLayer = L.polyline([], { color: '#c2410c', weight: 4 }).addTo(map);
+const feedbackCursor = L.circleMarker(MAP_START, {
+  radius: 7, color: '#ffffff', weight: 2, fillColor: '#ea580c', fillOpacity: 1,
+});
+const feedbackInMarker = L.circleMarker(MAP_START, {
+  radius: 6, color: '#15803d', weight: 3, fillOpacity: 0,
+});
+let feedbackPassageLayers = [];
 
 const el = (id) => document.getElementById(id);
 const setStatus = (msg) => { el('status').textContent = msg; };
 
 let requestSeq = 0;
 let searchSeq = 0;
+const referenceModelPromise = fetch('./data/reference-analysis.json')
+  .then((response) => (response.ok ? response.json() : null))
+  .catch(() => null);
 
 const state = {
   mode: 'loop',       // 'manual' | 'loop'
@@ -64,9 +83,91 @@ const state = {
   route: null,        // { coords, distanceM, ascendM, profile }
   candidates: [],     // geschlossene ORS-Runden
   markers: [],
+  highlightMarkers: [],
+  highlights: [],
+  highlightMode: false,
   busy: false,        // gates nur Map-Klicks; Korrektheit sichert requestSeq
   routingProfile: el('routingProfile').value,
+  feedback: {
+    active: false,
+    index: 0,
+    inIndex: null,
+    passages: [],
+  },
 };
+
+function safeFilename(value, fallback = 'route') {
+  const name = String(value || '').trim() || fallback;
+  return name
+    .normalize('NFKD')
+    .replace(/[^\w.-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || fallback;
+}
+
+function downloadText(content, type, filename) {
+  const blob = new Blob([content], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function clearFeedbackLayers() {
+  if (map.hasLayer(feedbackCursor)) feedbackCursor.remove();
+  if (map.hasLayer(feedbackInMarker)) feedbackInMarker.remove();
+  feedbackPassageLayers.forEach((layer) => layer.remove());
+  feedbackPassageLayers = [];
+}
+
+function resetFeedback() {
+  state.feedback = { active: false, index: 0, inIndex: null, passages: [] };
+  el('feedbackPanel').hidden = true;
+  el('feedbackScrubber').value = 0;
+  el('feedbackNote').value = '';
+  clearFeedbackLayers();
+}
+
+function feedbackPoint(index = state.feedback.index) {
+  return state.route?.coords?.[index] ?? null;
+}
+
+function renderFeedback() {
+  clearFeedbackLayers();
+  if (!state.feedback.active || !state.route?.coords?.length) return;
+  const point = feedbackPoint();
+  feedbackCursor.setLatLng([point[0], point[1]]).addTo(map);
+  if (state.feedback.inIndex !== null) {
+    const inPoint = feedbackPoint(state.feedback.inIndex);
+    feedbackInMarker.setLatLng([inPoint[0], inPoint[1]]).addTo(map);
+  }
+  feedbackPassageLayers = state.feedback.passages.map((passage) =>
+    L.polyline(
+      passage.coords.map(([lat, lon]) => [lat, lon]),
+      { color: '#dc2626', weight: 7, opacity: 0.8 },
+    ).addTo(map),
+  );
+  const distanceKm = distanceToIndex(state.route.coords, state.feedback.index) / 1000;
+  el('feedbackPosition').textContent =
+    `Punkt ${state.feedback.index + 1}/${state.route.coords.length} · ${distanceKm.toFixed(1)} km`;
+  el('feedbackPassages').innerHTML = state.feedback.passages
+    .map(
+      (passage, index) => `<div class="feedback-passage">
+        <span>${index + 1}. ${escapeXml(passage.problem)} · ${(passage.distanceM / 1000).toFixed(1)} km</span>
+        <button type="button" data-i="${index}" aria-label="Passage entfernen">×</button>
+      </div>`,
+    )
+    .join('');
+}
+
+function activateFeedback() {
+  if (!state.route?.coords?.length) return setStatus('Zuerst eine Route erzeugen.');
+  state.feedback.active = true;
+  el('feedbackPanel').hidden = false;
+  renderFeedback();
+  setStatus('Route scrubben, am Beginn IN und am Ende OUT setzen.');
+}
 
 function renderStats() {
   const km = state.route ? state.route.distanceM / 1000 : 0;
@@ -99,11 +200,35 @@ function renderMarkers() {
   });
 }
 
+function renderHighlights() {
+  state.highlightMarkers.forEach((marker) => marker.remove());
+  state.highlightMarkers = state.highlights.map((point, index) => {
+    const marker = L.circleMarker(point, {
+      radius: 7,
+      color: '#a16207',
+      weight: 3,
+      fillColor: '#facc15',
+      fillOpacity: 0.9,
+    }).addTo(map);
+    marker.bindTooltip(`Highlight ${index + 1}`);
+    return marker;
+  });
+  el('highlights').innerHTML = state.highlights
+    .map(
+      (point, index) => `<div class="highlight-row">
+        <span>◆ Highlight ${index + 1} · ${point[0].toFixed(4)}, ${point[1].toFixed(4)}</span>
+        <button type="button" data-i="${index}" aria-label="Highlight entfernen">×</button>
+      </div>`,
+    )
+    .join('');
+}
+
 async function reroute() {
   renderMarkers();
   if (state.waypoints.length < 2) {
     requestSeq++;
     state.busy = false;
+    resetFeedback();
     state.route = null;
     renderRoute();
     setStatus('');
@@ -116,6 +241,7 @@ async function reroute() {
   try {
     const route = await fetchRouteWithFallback(waypoints, { profile: state.routingProfile });
     if (seq !== requestSeq) return;
+    resetFeedback();
     state.route = route;
     setStatus(
       state.route.profile === state.routingProfile
@@ -124,6 +250,7 @@ async function reroute() {
     );
   } catch (err) {
     if (seq !== requestSeq) return;
+    resetFeedback();
     state.route = null;
     setStatus(`Routing fehlgeschlagen: ${err.message}`);
   }
@@ -138,14 +265,27 @@ function clearAll() {
   state.waypoints = [];
   state.route = null;
   state.candidates = [];
+  state.highlights = [];
+  state.highlightMode = false;
+  resetFeedback();
   renderMarkers();
+  renderHighlights();
   renderRoute();
   el('suggestions').innerHTML = '';
   setStatus('');
 }
 
 map.on('click', (e) => {
-  if (state.busy) return;
+  if (state.busy || state.feedback.active) return;
+  if (state.highlightMode) {
+    state.highlights.push([e.latlng.lat, e.latlng.lng]);
+    state.highlightMode = false;
+    el('addHighlight').classList.remove('active');
+    el('addHighlight').textContent = 'Weiteres Highlight setzen';
+    renderHighlights();
+    setStatus(`Highlight ${state.highlights.length} gesetzt.`);
+    return;
+  }
   if (state.mode === 'loop') {
     state.waypoints = [[e.latlng.lat, e.latlng.lng]];
   } else {
@@ -159,6 +299,19 @@ el('undoButton').addEventListener('click', () => {
   reroute();
 });
 el('clearButton').addEventListener('click', clearAll);
+el('addHighlight').addEventListener('click', () => {
+  state.highlightMode = !state.highlightMode;
+  el('addHighlight').classList.toggle('active', state.highlightMode);
+  el('addHighlight').textContent = state.highlightMode
+    ? 'Jetzt Highlight auf Karte anklicken …'
+    : state.highlights.length ? 'Weiteres Highlight setzen' : 'Highlight auf Karte setzen';
+});
+el('highlights').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-i]');
+  if (!button) return;
+  state.highlights.splice(Number(button.dataset.i), 1);
+  renderHighlights();
+});
 
 document.querySelectorAll('input[name="mode"]').forEach((radio) =>
   radio.addEventListener('change', () => {
@@ -185,7 +338,7 @@ function renderSuggestions(activeIndex = -1) {
   el('suggestions').innerHTML = state.candidates
     .map(
       (c, i) => `<button type="button" class="suggestion${i === activeIndex ? ' active' : ''}" data-i="${i}">
-        ${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.inRange ? '' : ` (außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm'].filter(Boolean).join(' + ')})`}
+        ${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.reference?.goodAffinity ? ` · Referenz ${Math.round(c.reference.goodAffinity * 100)} %` : ''}${c.reference?.badCoverage ? ` · ⚠ ${Math.round(c.reference.badCoverage * 100)} % Feedback` : ''}${!c.constraints?.surfaceAvailable && !el('allowMeadowEarth').checked ? ' · ⚠ Oberfläche nicht prüfbar' : ''}${c.inRange ? '' : ` (außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm', !c.constraints?.surfaceAllowed && 'Wiese/Erde', !c.constraints?.slopeAllowed && `Steigung ${c.constraints.maximumGrade.toFixed(1)} %`].filter(Boolean).join(' + ')})`}
       </button>`,
     )
     .join('');
@@ -196,6 +349,7 @@ function selectCandidate(i) {
   if (!c) return;
   requestSeq++; // invalidate any in-flight reroute; this click owns the state now
   state.busy = false;
+  resetFeedback();
   state.route = c.route;
   state.waypoints = [...c.waypoints];
   renderMarkers();
@@ -206,6 +360,8 @@ function selectCandidate(i) {
   const misses = [
     !c.distanceInRange && `${(c.route.distanceM / 1000).toFixed(1)} km`,
     !c.ascentInRange && `${Math.round(c.route.ascendM)} hm`,
+    !c.constraints?.surfaceAllowed && `${(c.constraints.meadowEarthM / 1000).toFixed(1)} km Wiese/Erde`,
+    !c.constraints?.slopeAllowed && `${c.constraints.maximumGrade.toFixed(1)} % maximale Steigung`,
   ].filter(Boolean);
   setStatus(c.inRange ? '' : `Beste verfügbare Runde außerhalb des Zielbereichs: ${misses.join(', ')}.`);
 }
@@ -215,20 +371,105 @@ el('suggestions').addEventListener('click', (e) => {
   if (btn) selectCandidate(Number(btn.dataset.i));
 });
 
+el('feedbackButton').addEventListener('click', activateFeedback);
+el('feedbackClose').addEventListener('click', () => {
+  state.feedback.active = false;
+  el('feedbackPanel').hidden = true;
+  clearFeedbackLayers();
+  setStatus('');
+});
+el('feedbackScrubber').addEventListener('input', () => {
+  if (!state.route) return;
+  state.feedback.index = routeIndexFromProgress(
+    el('feedbackScrubber').value,
+    state.route.coords.length,
+  );
+  renderFeedback();
+});
+el('feedbackIn').addEventListener('click', () => {
+  state.feedback.inIndex = state.feedback.index;
+  renderFeedback();
+  setStatus(`IN bei Punkt ${state.feedback.index + 1} gesetzt. Jetzt bis zum Ende scrubben.`);
+});
+el('feedbackOut').addEventListener('click', () => {
+  try {
+    const passage = buildBadPassage(
+      state.route?.coords,
+      state.feedback.inIndex,
+      state.feedback.index,
+      {
+        problem: el('feedbackProblem').value,
+        note: el('feedbackNote').value,
+      },
+    );
+    state.feedback.passages.push(passage);
+    state.feedback.inIndex = null;
+    el('feedbackNote').value = '';
+    renderFeedback();
+    setStatus(`Passage ${state.feedback.passages.length} gespeichert.`);
+  } catch (err) {
+    setStatus(err.message);
+  }
+});
+el('feedbackPassages').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-i]');
+  if (!button) return;
+  state.feedback.passages.splice(Number(button.dataset.i), 1);
+  renderFeedback();
+});
+el('feedbackExport').addEventListener('click', () => {
+  if (!state.feedback.passages.length) {
+    return setStatus('Mindestens eine schlechte Passage mit IN und OUT markieren.');
+  }
+  const routeName = el('routeName').value.trim() || 'GravelDeluxe-Runde';
+  const payload = buildFeedbackPayload(state.route, state.feedback.passages, {
+    routeName,
+    requestedDistanceKm: {
+      min: Number(el('loopKmMin').value),
+      max: Number(el('loopKmMax').value),
+    },
+    requestedAscentM: {
+      min: Number(el('loopHmMin').value),
+      max: Number(el('loopHmMax').value),
+    },
+    requestedDirection: el('loopDirection').value,
+    allowMeadowEarth: el('allowMeadowEarth').checked,
+    maxSlopePercent: Number(el('maxSlopePercent').value),
+    highlights: state.highlights.map((point) => point.slice(0, 2)),
+  });
+  downloadText(
+    `${JSON.stringify(payload, null, 2)}\n`,
+    'application/json',
+    `${safeFilename(routeName)}__feedback.json`,
+  );
+  setStatus('Feedback mit vollständiger Route und markierten Passagen heruntergeladen.');
+});
+
 // Sechs native ORS-Rundtouren erzeugen und nach Distanz UND Höhenmetern
 // bewerten. Die drei besten werden angezeigt; die lokale Instanz braucht keinen Key.
-async function roundTripCandidates(start, minKm, maxKm, minHm, maxHm, direction) {
+async function roundTripCandidates(
+  start,
+  minKm,
+  maxKm,
+  minHm,
+  maxHm,
+  direction,
+  { customModel, highlights, allowMeadowEarth, maxSlopePercent },
+) {
   const baseLengths = [minKm, (minKm + maxKm) / 2, maxKm];
   const lengthsKm = [...baseLengths, ...baseLengths];
   let firstError;
   const results = await Promise.all(
     lengthsKm.map(async (km) => {
       try {
-        const route = await fetchRoundTrip(start, {
+        let route = await fetchRoundTripWithRetry(start, {
           lengthM: km * 1000,
-          seed: Math.floor(Math.random() * 100000),
-          points: 5,
+          customModel,
         });
+        if (highlights.length) {
+          const viaPoints = buildHighlightWaypoints(start, route.coords, highlights);
+          route = await fetchRouteThroughWaypoints(viaPoints, { customModel });
+        }
         const snappedStart = route.coords.length
           ? [route.coords[0][0], route.coords[0][1]]
           : start;
@@ -242,9 +483,59 @@ async function roundTripCandidates(start, minKm, maxKm, minHm, maxHm, direction)
       }
     }),
   );
-  const valid = results.filter(Boolean);
-  if (!valid.length && firstError) throw firstError;
-  return rankRoundTripCandidates(valid, { minKm, maxKm, minHm, maxHm, direction, start });
+  let valid = results.filter(Boolean);
+  if (!valid.length) {
+    // Fallback für Gebiete, in denen der native ORS-Rundtouralgorithmus seine
+    // zufälligen internen Punkte nicht auf den Graphen bekommt. Die Geometrie
+    // wird hier vorgegeben, die eigentliche Wegwahl bleibt vollständig bei ORS.
+    try {
+      const fallback = await generateCandidates(
+        start,
+        {
+          minKm,
+          maxKm,
+          mode: 'circle',
+          count: 6,
+          n: 3,
+          maxIter: 3,
+        },
+        (waypoints) => fetchRouteThroughWaypoints(waypoints, { customModel }),
+      );
+      valid = await Promise.all(
+        fallback.map(async (candidate) => {
+          let route = candidate.route;
+          if (highlights.length) {
+            const viaPoints = buildHighlightWaypoints(start, route.coords, highlights);
+            route = await fetchRouteThroughWaypoints(viaPoints, { customModel });
+          }
+          return {
+            route: { ...route, profile: 'ors-gravel-deluxe' },
+            waypoints: candidate.waypoints,
+          };
+        }),
+      );
+    } catch (fallbackError) {
+      throw new Error(
+        `ORS konnte weder native noch gestützte Rundtouren erzeugen. `
+        + `${fallbackError.message}; letzter nativer Fehler: ${firstError?.message ?? 'unbekannt'}`,
+      );
+    }
+  }
+  const referenceModel = await referenceModelPromise;
+  return rankRoundTripCandidates(
+    valid,
+    {
+      minKm,
+      maxKm,
+      minHm,
+      maxHm,
+      direction,
+      start,
+      referenceModel,
+      allowMeadowEarth,
+      maxSlopePercent,
+    },
+  );
 }
 
 el('generateLoop').addEventListener('click', async () => {
@@ -255,6 +546,8 @@ el('generateLoop').addEventListener('click', async () => {
   const minHm = Number(el('loopHmMin').value);
   const maxHm = Number(el('loopHmMax').value);
   const direction = el('loopDirection').value;
+  const maxSlopePercent = Number(el('maxSlopePercent').value);
+  const allowMeadowEarth = el('allowMeadowEarth').checked;
   if (!start) return setStatus('Zuerst Startpunkt auf die Karte klicken.');
   if (!(minKm >= 5 && maxKm <= 300 && minKm < maxKm)) {
     return setStatus('Ungültiger Distanzbereich (5–300 km, min < max).');
@@ -262,12 +555,30 @@ el('generateLoop').addEventListener('click', async () => {
   if (!(minHm >= 0 && maxHm <= 10000 && minHm <= maxHm)) {
     return setStatus('Ungültiger Höhenmeterbereich (0–10.000 hm, min ≤ max).');
   }
+  if (!(maxSlopePercent >= 3 && maxSlopePercent <= 30)) {
+    return setStatus('Ungültige maximale Steigung (3–30 %).');
+  }
+  const customModel = buildGravelDeluxeCustomModel({
+    allowMeadowEarth,
+    maxSlopePercent,
+  });
   const seq = ++requestSeq;
   state.busy = true;
   setStatus('Vorschläge werden erzeugt …');
   try {
     const candidates = await roundTripCandidates(
-      start, minKm, maxKm, minHm, maxHm, direction,
+      start,
+      minKm,
+      maxKm,
+      minHm,
+      maxHm,
+      direction,
+      {
+        customModel,
+        highlights: [...state.highlights],
+        allowMeadowEarth,
+        maxSlopePercent,
+      },
     );
     if (seq !== requestSeq) return;
     if (!candidates.length) throw new Error('Keine Runde gefunden');
@@ -339,12 +650,17 @@ function renderSavedRoutes() {
 
 el('saveButton').addEventListener('click', () => {
   if (!state.route) return setStatus('Keine Route zum Speichern.');
-  const name = prompt('Name der Route:', 'Gravel-Runde')?.trim();
+  const name = el('routeName').value.trim();
   if (!name) return;
   try {
     saveRoute({
       name,
       waypoints: state.waypoints,
+      highlights: state.highlights,
+      settings: {
+        allowMeadowEarth: el('allowMeadowEarth').checked,
+        maxSlopePercent: Number(el('maxSlopePercent').value),
+      },
       coords: state.route.coords,
       distanceM: state.route.distanceM,
       ascendM: state.route.ascendM,
@@ -369,7 +685,14 @@ el('savedRoutes').addEventListener('click', (e) => {
   if (!route) return;
   requestSeq++; // invalidate any in-flight reroute/generation; this load owns the state now
   state.busy = false;
+  resetFeedback();
   state.waypoints = route.waypoints;
+  state.highlights = route.highlights ?? [];
+  el('routeName').value = route.name;
+  if (route.settings) {
+    el('allowMeadowEarth').checked = route.settings.allowMeadowEarth ?? true;
+    el('maxSlopePercent').value = route.settings.maxSlopePercent ?? 10;
+  }
   state.route = {
     coords: route.coords,
     distanceM: route.distanceM,
@@ -377,6 +700,7 @@ el('savedRoutes').addEventListener('click', (e) => {
     profile: 'gravel',
   };
   renderMarkers();
+  renderHighlights();
   renderRoute();
   map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
   refreshTilesSoon();
@@ -385,6 +709,7 @@ el('savedRoutes').addEventListener('click', (e) => {
 
 renderSavedRoutes();
 renderMarkers();
+renderHighlights();
 setStatus('Home Base gesetzt. Distanz wählen und Runde erzeugen.');
 
 el('reverseButton').addEventListener('click', () => {
@@ -394,6 +719,7 @@ el('reverseButton').addEventListener('click', () => {
     reroute();
   } else if (state.route) {
     // Runde (ein Wegpunkt): Linie umdrehen reicht, kein Neu-Routing nötig.
+    resetFeedback();
     state.route = { ...state.route, coords: [...state.route.coords].reverse() };
     renderRoute();
   } else {
@@ -403,14 +729,12 @@ el('reverseButton').addEventListener('click', () => {
 
 el('exportButton').addEventListener('click', () => {
   if (!state.route) return setStatus('Keine Route zum Exportieren.');
-  const blob = new Blob([toGpx('Gravel-Route', state.route.coords)], {
-    type: 'application/gpx+xml',
-  });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'route.gpx';
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const routeName = el('routeName').value.trim() || 'GravelDeluxe-Runde';
+  downloadText(
+    toGpx(routeName, state.route.coords),
+    'application/gpx+xml',
+    `${safeFilename(routeName)}.gpx`,
+  );
 });
 
 export { state, map, routeLayer, el, setStatus, reroute, renderMarkers, renderRoute, clearAll };

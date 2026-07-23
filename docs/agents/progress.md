@@ -17,7 +17,7 @@ Stand: 2026-07-23
 - Nginx-Reverse-Proxy für einen gemeinsamen Browser-Ursprung erstellt.
 - GitLab-CI für Tests sowie Build/Push beider Images erstellt.
 - Portainer-Stack mit Host-Volumes und scoped Watchtower erstellt.
-- JavaScript-Teststand: 58 Tests erfolgreich.
+- JavaScript-Teststand: 81 Tests erfolgreich.
 - Compose-Datei erfolgreich mit `docker compose config` geprüft.
 - Agentenkontext token-sparend in `AGENTS.md` und thematische Dateien unter
   `docs/agents/` aufgeteilt.
@@ -56,8 +56,46 @@ Stand: 2026-07-23
   die Peilung vom Start zum geometrischen Routenschwerpunkt; sie beeinflusst
   das Kandidatenranking, bildet aber bewusst keine harte Sperrzone.
 - 18 manuell geplante Referenz-GPX unter `gpx-samples/` übernommen. Der Ordner
-  enthält jetzt ein knappes Schema für GOOD-/BAD-Feedback mit gleichnamiger
-  Markdown-Beschreibung problematischer Abschnitte.
+  dokumentiert gute GPX-Referenzen und das JSON-Format für problematische
+  Routen.
+- Interaktiven Feedback-Modus ergänzt: Die vollständige Route lässt sich
+  scrubben, ein Kartencursor folgt der Position und mehrere schlechte Passagen
+  können per IN/OUT markiert, kategorisiert und rot visualisiert werden.
+- Feedback-Exportformat `graveldeluxe-route-feedback/v1` ergänzt. JSON enthält
+  die vollständige Route, exakte Teilgeometrien der Passagen, Profil,
+  Zielparameter, Notizen und Routenname.
+- Gemeinsames Routennamensfeld ergänzt; GPX- und Feedback-Dateiname sowie der
+  interne GPX-Name übernehmen den eingegebenen Wert.
+- GPX- und Feedbackanalyse als `make analyze` ergänzt. Sie versteht klassische
+  GPX-Dateien sowie namensraumpräfixierte, selbstschließende Hammerhead-Punkte.
+- 18 GPX-Dateien analysiert: 17 eindeutige gute Routen, eine Dublette und 7.669
+  gute Rasterkorridore erkannt. Noch keine Feedbackdatei lag zur Analyse vor.
+- Reproduzierbares Modell `data/reference-analysis.json` integriert. Neue
+  ORS-Kandidaten erhalten einen moderaten Bonus für gute Referenzkorridore und
+  eine deutlich stärkere Strafe für markierte schlechte Passagen.
+- Vorschlagsanzeige um Referenzübereinstimmung und Feedbackwarnung ergänzt.
+- Rundenoptionen für Erd-/Gras-Wiesenwege und maximale Steigung ergänzt;
+  Standardgrenze sind 10 %. Weil der aktuelle ORS-Graph `surface` und
+  `average_slope` nicht als Custom-Model-Encoded-Values bereitstellt, wertet das
+  Ranking beide Vorgaben nach der Antwort aus. `WaySurfaceType` ist nun explizit
+  im Graphbau aktiviert; die Oberfläche kommt über ORS-`extra_info`.
+- `make ors-rebuild` ergänzt: Der bestehende GravelDeluxe-Graph wird
+  wiederherstellbar in `local-data/ors/graph-backups/` verschoben und mit
+  `WaySurfaceType` neu gebaut.
+- Karten-Highlights ergänzt. Sie werden anhand der nativen Rundengeometrie
+  einsortiert und gemeinsam mit vier Formstützpunkten als verpflichtende
+  ORS-Via-Punkte neu geroutet.
+- Highlights und neue Routenoptionen werden in gespeicherten Routen sowie im
+  Feedback-Export mitgeführt.
+- Native ORS-Rundtouren wiederholen den bekannten Fehler „Could not find a
+  valid point“ automatisch mit bis zu vier Seeds und wechselnden Formpunktzahlen.
+- Der ORS-Smoke-Test verwendet dieselbe Fehlerbehandlung mit acht
+  deterministischen Varianten und gibt nicht wiederholbare ORS-Fehler direkt aus.
+- Falls ORS keine native Rundtour erzeugen kann, bauen App und Smoke-Test eine
+  geschlossene Form aus drei Via-Punkten auf und lassen diese regulär durch das
+  GravelDeluxe-Profil routen.
+- Spätere Funktion „Route mit editierbaren Wegpunkten laden und durch den
+  GravelDeluxe-Algorithmus optimieren“ im Implementierungsplan vorgemerkt.
 
 ## Noch offen vor Abschluss von Phase 1
 

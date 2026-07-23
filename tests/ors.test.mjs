@@ -1,12 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRoundTripBody, parseRoundTrip, fetchRoundTrip } from '../js/ors.js';
+import {
+  buildRoundTripBody,
+  buildWaypointRouteBody,
+  parseRoundTrip,
+  fetchRoundTrip,
+  fetchRoundTripWithRetry,
+  fetchRouteThroughWaypoints,
+} from '../js/ors.js';
 
 const okGeojson = {
   features: [
     {
       geometry: { coordinates: [[8.6, 50.1, 120], [8.7, 50.2, 140], [8.6, 50.1, 120]] },
-      properties: { summary: { distance: 41234.5 }, ascent: 512.3 },
+      properties: {
+        summary: { distance: 41234.5 },
+        ascent: 512.3,
+        extras: { surface: { values: [[0, 1, 12], [1, 2, 1]] } },
+      },
     },
   ],
 };
@@ -24,6 +35,7 @@ test('buildRoundTripBody: single [lon, lat] coordinate + round_trip options', ()
   );
   assert.equal(body.elevation, true);
   assert.equal(body.instructions, false);
+  assert.deepEqual(body.extra_info, ['surface']);
 });
 
 test('buildRoundTripBody: rounds fractional length to whole meters', () => {
@@ -31,10 +43,22 @@ test('buildRoundTripBody: rounds fractional length to whole meters', () => {
   assert.equal(body.options.round_trip.length, 40001);
 });
 
+test('buildWaypointRouteBody: converts highlights from lat/lon to ORS lon/lat', () => {
+  const body = buildWaypointRouteBody(
+    [[49.1, 9.1], [49.2, 9.2], [49.1, 9.1]],
+    { customModel: { distance_influence: 50 } },
+  );
+  assert.deepEqual(body.coordinates, [[9.1, 49.1], [9.2, 49.2], [9.1, 49.1]]);
+  assert.equal(body.preference, 'recommended');
+  assert.equal(body.custom_model.distance_influence, 50);
+  assert.deepEqual(body.extra_info, ['surface']);
+});
+
 test('parseRoundTrip: coords swapped to [lat, lon], distance from summary', () => {
   const r = parseRoundTrip(okGeojson);
   assert.deepEqual([r.coords[0][0], r.coords[0][1]], [50.1, 8.6]);
   assert.equal(r.distanceM, 41234.5);
+  assert.deepEqual(r.surfaceSegments, [[0, 1, 12], [1, 2, 1]]);
 });
 
 test('parseRoundTrip: ascent computed from smoothed coords, not the noisy props.ascent', () => {
@@ -108,4 +132,56 @@ test('fetchRoundTrip: error status surfaces German message with ORS reason', asy
     fetchRoundTrip([50, 8], { lengthM: 40000, key: 'k', fetchImpl }),
     /ORS-Fehler \(404\): Could not find routable point/,
   );
+});
+
+test('fetchRoundTripWithRetry: changes seed and point count after invalid generated point', async () => {
+  const calls = [];
+  const fetchRoundTripImpl = async (_start, options) => {
+    calls.push({ seed: options.seed, points: options.points });
+    if (calls.length < 3) {
+      throw new Error(
+        'ORS-Fehler (500): Could not find a valid point after 3 tries, for the point:49,9,200',
+      );
+    }
+    return { distanceM: 40000 };
+  };
+  const result = await fetchRoundTripWithRetry(
+    [49, 9],
+    { lengthM: 40000 },
+    { initialSeed: 100, fetchRoundTripImpl },
+  );
+  assert.equal(result.distanceM, 40000);
+  assert.deepEqual(calls, [
+    { seed: 100, points: 3 },
+    { seed: 8019, points: 4 },
+    { seed: 15938, points: 5 },
+  ]);
+});
+
+test('fetchRoundTripWithRetry: does not hide non-retryable ORS errors', async () => {
+  const fetchRoundTripImpl = async () => {
+    throw new Error('ORS-Fehler (500): Cannot compile expression');
+  };
+  await assert.rejects(
+    fetchRoundTripWithRetry(
+      [49, 9],
+      { lengthM: 40000 },
+      { fetchRoundTripImpl },
+    ),
+    /Cannot compile expression/,
+  );
+});
+
+test('fetchRouteThroughWaypoints: sends a normal directions request', async () => {
+  let body;
+  const fetchImpl = async (_url, options) => {
+    body = JSON.parse(options.body);
+    return { ok: true, json: async () => okGeojson };
+  };
+  await fetchRouteThroughWaypoints(
+    [[49.1, 9.1], [49.2, 9.2], [49.1, 9.1]],
+    { requiresKey: false, fetchImpl },
+  );
+  assert.equal(body.options, undefined);
+  assert.equal(body.coordinates.length, 3);
 });

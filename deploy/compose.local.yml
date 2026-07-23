@@ -53,6 +53,7 @@ services:
       ors.engine.profiles.gravel-deluxe.build.encoder_options.enable_custom_models: "true"
     volumes:
       - "../local-data/ors/config:/home/ors/config"
+      - "./ors-config.yml:/home/ors/config/ors-config.yml:ro"
       - "../local-data/ors/elevation_cache:/home/ors/elevation_cache"
       - "../local-data/ors/files:/home/ors/files"
       - "../local-data/ors/graphs:/home/ors/graphs"

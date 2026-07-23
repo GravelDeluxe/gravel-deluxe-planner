@@ -17,6 +17,7 @@
     ],
     "distance_influence": 70
   },
+  "extra_info": ["surface"],
   "elevation": true,
   "instructions": false
 }

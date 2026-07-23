@@ -65,9 +65,22 @@
           <option value="NW">Nordwesten</option>
         </select>
         <p class="field-help">Lenkt die Hauptausdehnung der Runde; keine harte Sperrzone.</p>
+        <div class="route-options">
+          <label>
+            <input id="allowMeadowEarth" type="checkbox" checked />
+            Wiesenwege mit Erde verwenden
+          </label>
+          <label for="maxSlopePercent">Maximale Steigung (%)</label>
+          <input id="maxSlopePercent" type="number" min="3" max="30" step="1" value="10" />
+        </div>
+        <button id="addHighlight" class="secondary-wide" type="button">Highlight auf Karte setzen</button>
+        <div id="highlights" class="highlights" aria-label="Highlights"></div>
         <button id="generateLoop" type="button">GravelDeluxe-Vorschläge</button>
         <div id="suggestions" aria-label="Routen-Vorschläge"></div>
       </div>
+
+      <label class="field-label" for="routeName">Routenname für Export</label>
+      <input id="routeName" class="route-name" type="text" value="GravelDeluxe-Runde" maxlength="100" />
 
       <div class="action-row">
         <button id="undoButton" type="button">Zurück</button>
@@ -75,7 +88,35 @@
         <button id="reverseButton" type="button">Umkehren</button>
         <button id="saveButton" type="button">Speichern</button>
         <button id="exportButton" type="button">GPX</button>
+        <button id="feedbackButton" type="button">Feedback</button>
       </div>
+
+      <section id="feedbackPanel" class="feedback-panel" hidden aria-label="Routenfeedback">
+        <div class="feedback-heading">
+          <strong>Schlechte Passage markieren</strong>
+          <button id="feedbackClose" type="button" aria-label="Feedback schließen">×</button>
+        </div>
+        <label for="feedbackScrubber">Route scrubben</label>
+        <input id="feedbackScrubber" type="range" min="0" max="1000" value="0" />
+        <output id="feedbackPosition">Start · 0,0 km</output>
+        <div class="feedback-markers">
+          <button id="feedbackIn" type="button">IN setzen</button>
+          <button id="feedbackOut" type="button">OUT setzen</button>
+        </div>
+        <label for="feedbackProblem">Problem</label>
+        <select id="feedbackProblem">
+          <option value="unnötiger Abstecher">Unnötiger Abstecher</option>
+          <option value="Hauptstraße">Hauptstraße</option>
+          <option value="Sackgasse">Sackgasse / zurück</option>
+          <option value="Schieben">Schiebepassage</option>
+          <option value="Oberfläche">Schlechte Oberfläche</option>
+          <option value="Steigung">Zu steil</option>
+          <option value="anderes">Anderes</option>
+        </select>
+        <textarea id="feedbackNote" rows="2" placeholder="Optionale Notiz …"></textarea>
+        <div id="feedbackPassages" class="feedback-passages"></div>
+        <button id="feedbackExport" type="button">Feedback herunterladen</button>
+      </section>
 
       <div id="savedRoutes" aria-label="Gespeicherte Routen"></div>
 

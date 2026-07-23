@@ -16,25 +16,28 @@ GOOD__kurzer-name.gpx
 Für eine problematische Route:
 
 ```text
-BAD__kurzer-name.gpx
-BAD__kurzer-name.md
+kurzer-name__feedback.json
 ```
 
-Die gleichnamige Markdown-Datei sollte kurz enthalten:
+Diese Datei wird direkt über den Feedback-Modus der Anwendung erzeugt. Sie
+enthält:
 
-```markdown
-# Bewertung
+- die vollständige Route mit allen Koordinaten und Höhen;
+- Profil, Gesamtdistanz und Gesamthöhenmeter;
+- den beim Export vergebenen Routennamen;
+- gewünschte Distanz, Höhenmeter und Himmelsrichtung;
+- jede schlechte Passage mit exaktem IN-/OUT-Punkt, Teilgeometrie,
+  Problemauswahl und optionaler Notiz.
 
-- Start/Datum:
-- gewünschte Distanz und Höhenmeter:
-- gewünschte Himmelsrichtung:
-- Gesamturteil: 1–5
-- guter Abschnitt: ungefähr von … bis …
-- problematischer Abschnitt: ungefähr von … bis …
-- Problem: Hauptstraße | Sackgasse | Schieben | Oberfläche | unnötiger Abstecher | anderes
-- gewünschte Alternative:
+Damit ist kein separates GPX nötig. Für gute Referenzrouten bleibt GPX das
+bevorzugte Format.
+
+Nach neuen GPX- oder Feedbackdateien das Referenzmodell aktualisieren:
+
+```sh
+make analyze
 ```
 
-Am hilfreichsten ist immer die tatsächlich erzeugte GPX-Datei zusammen mit
-einem Ortsnamen oder Kartenpunkt für den fehlerhaften Abschnitt. Ein Screenshot
-allein zeigt den exakten Weg meist nicht zuverlässig.
+Die Anwendung lädt anschließend `data/reference-analysis.json` und verwendet
+gute Korridore als weiche Präferenz sowie schlechte Passagen als starke
+Abwertung beim Routenranking.

@@ -102,6 +102,8 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
 .search-row input,
 #loopControls input[type="number"],
 #loopDirection,
+#feedbackProblem,
+#routeName,
 #routingProfile {
   flex: 1; min-width: 0; padding: 9px 11px;
   font: inherit; font-size: 0.85rem; color: var(--fg);
@@ -132,6 +134,11 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
 .field-label { display: block; font-weight: 500; }
 .field-help {
   margin: 5px 0 12px; color: var(--fg-muted); font-size: 0.72rem; line-height: 1.35;
+}
+.route-name {
+  width: 100%; margin: 6px 0 10px; padding: 9px 11px;
+  color: var(--fg); background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font: inherit; font-size: 0.85rem;
 }
 
 /* ---- Buttons --------------------------------------------------------------- */
@@ -177,6 +184,72 @@ button:focus-visible {
 #generateLoop:active { transform: scale(0.97); }
 
 .action-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+.route-options {
+  display: grid; grid-template-columns: 1fr auto; align-items: center;
+  gap: 8px; margin: 8px 0 10px;
+}
+.route-options label:first-child {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 7px;
+  color: var(--fg);
+}
+.route-options input[type="number"] { width: 72px; }
+.secondary-wide {
+  width: 100%; margin-bottom: 7px; padding: 8px 10px;
+  color: var(--fg); background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.secondary-wide.active { border-color: var(--accent); background: var(--accent-soft); }
+.highlights { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+.highlight-row {
+  display: flex; align-items: center; gap: 6px; color: var(--fg-muted);
+  font-size: 0.74rem;
+}
+.highlight-row span { flex: 1; }
+.highlight-row button {
+  padding: 2px 7px; color: var(--danger); background: transparent;
+  border: 1px solid var(--border); border-radius: var(--radius-xs);
+}
+
+/* ---- Route feedback -------------------------------------------------------- */
+.feedback-panel {
+  margin: 4px 0 12px; padding: 11px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.feedback-heading {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; margin-bottom: 10px; font-size: 0.86rem;
+}
+.feedback-heading button {
+  border: 0; background: transparent; color: var(--fg-muted);
+  font-size: 1.2rem; line-height: 1;
+}
+#feedbackScrubber { width: 100%; accent-color: var(--accent); }
+#feedbackPosition {
+  display: block; margin: 2px 0 8px; color: var(--fg-muted);
+  font-size: 0.73rem; font-variant-numeric: tabular-nums;
+}
+.feedback-markers { display: flex; gap: 7px; margin-bottom: 9px; }
+.feedback-markers button,
+#feedbackExport,
+.feedback-passages button {
+  padding: 7px 9px; color: var(--fg); background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-xs);
+}
+.feedback-markers button { flex: 1; }
+#feedbackProblem, #feedbackNote {
+  width: 100%; margin: 5px 0 8px; padding: 8px 9px;
+  color: var(--fg); background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-xs); font: inherit; font-size: 0.78rem;
+}
+#feedbackNote { resize: vertical; }
+#feedbackExport { width: 100%; margin-top: 3px; }
+.feedback-passage {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  color: var(--fg-muted); font-size: 0.73rem;
+}
+.feedback-passage span { flex: 1; }
+.feedback-passage button { padding: 3px 7px; color: var(--danger); }
 
 /* ---- Segmented mode toggles ------------------------------------------------ */
 .mode-row {

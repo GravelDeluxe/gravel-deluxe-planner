@@ -27,7 +27,24 @@ Runden gehen relativ über `/ors` an den Container. Das ORS-Profil
 `gravel-deluxe` verwendet den Encoder `cycling-mountain` und wird beim
 Graphaufbau für request-spezifische Custom-Models freigeschaltet. Der Browser
 sendet das versionierte Modell aus `js/gravel-deluxe.js`; die Kandidatenwertung
-nach Distanz und Höhenmetern liegt getrennt in `js/candidates.js`.
+nach Distanz, Höhenmetern und Routenbedingungen liegt getrennt in
+`js/candidates.js`. Die aus dem Höhenprofil ermittelte maximale Steigung wird
+nach der Antwort in `js/route-constraints.js` bewertet. `deploy/ors-config.yml`
+aktiviert beim Graphbau `WaySurfaceType`; dessen `surface`-Zusatzdaten speisen
+die Oberflächenvorgabe.
+
+Die Rundenerzeugung bevorzugt die native ORS-`round_trip`-Funktion. Scheitern
+alle Seeds an nicht routbaren internen Zufallspunkten, erzeugt `js/loop.js`
+geometrische Via-Punkte; ORS übernimmt weiterhin die vollständige Wegwahl
+zwischen diesen Punkten.
+
+`scripts/analyze-references.mjs` verarbeitet gute GPX-Dateien und
+`graveldeluxe-route-feedback/v1` aus `gpx-samples/`. Das reproduzierbare
+Browserartefakt `data/reference-analysis.json` enthält ein Raster aus guten und
+schlechten Korridoren. `js/reference-analysis.js` bewertet ORS-Kandidaten gegen
+dieses Raster; negatives Feedback wirkt stärker als der positive Referenzbonus.
+Die Optimierung verändert nicht den ORS-Graph, sondern die transparente Auswahl
+der sechs erzeugten Kandidaten.
 
 ## Profile
 

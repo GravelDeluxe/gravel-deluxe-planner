@@ -1,0 +1,21 @@
+ors:
+  engine:
+    profile_default:
+      build:
+        source_file: /home/ors/files/stuttgart-regbez-latest.osm.pbf
+    profiles:
+      driving-car:
+        enabled: false
+      cycling-mountain:
+        enabled: false
+      gravel-deluxe:
+        enabled: true
+        encoder_name: cycling-mountain
+        build:
+          encoder_options:
+            consider_elevation: true
+            turn_costs: true
+            block_fords: false
+            enable_custom_models: true
+          ext_storages:
+            WaySurfaceType:

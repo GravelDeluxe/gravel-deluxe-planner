@@ -41,9 +41,19 @@ Empfehlungen des ursprünglichen Autors.
   ORS erhalten.
 - Optionale grobe Himmelsrichtung lenkt die Hauptausdehnung einer Runde und
   hilft, ungünstige Seiten des Startorts zu meiden.
+- Erd-/Gras-Wiesenwege lassen sich zulassen oder ausschließen; die maximale
+  Steigung ist einstellbar und beträgt standardmäßig 10 %. Diese Vorgaben
+  werden nach der Routenantwort bewertet. Die Oberfläche stammt aus dem beim
+  ORS-Graphbau aktivierten Speicher `WaySurfaceType`, die Steigung aus den
+  Höhenwerten.
+- Beliebige Highlights können auf der Karte gesetzt werden und werden als
+  verpflichtende Via-Punkte in die Rundtour eingebaut.
 - Distanz, Höhenmeter (für Runden robust aus verrauschten SRTM-Höhen berechnet:
   Void-Füllung → Median-Filter → Anstieg per Hysterese), Höhenprofil.
 - Ortssuche (Nominatim), Speichern (localStorage), GPX-Export.
+- Feedback-Modus: Route scrubben, schlechte Passagen per IN/OUT markieren und
+  als JSON einschließlich vollständiger Route und Analysemetadaten exportieren.
+- Frei wählbarer Routenname für GPX- und Feedback-Export.
 - UI passt sich automatisch an Hell-/Dunkel-Modus des Systems an (Glas-Optik).
 
 ## Installation
@@ -94,6 +104,32 @@ Schiebepassagen, Stufen und unpassierbare Wege werden stark abgewertet; ein
 guter paralleler Radweg gewinnt knapp gegen einen Track. Sechs Varianten werden
 nach Distanz und Höhenmetern bewertet, die besten drei angezeigt. Manuelle
 Strecken verwenden weiterhin das ausgewählte BRouter-Profil.
+
+### GPX- und Feedbackanalyse
+
+Die Referenzanalyse verarbeitet alle guten `.gpx`-Dateien und alle mit dem
+Feedback-Modus erzeugten `*__feedback.json`-Dateien in `gpx-samples/`:
+
+```sh
+make analyze
+```
+
+Das reproduzierbare Ergebnis liegt in `data/reference-analysis.json`. Gute
+Routen bilden bevorzugte Korridore, markierte schlechte Passagen bilden zu
+meidende Korridore. Beim Erzeugen neuer Runden fließt dieses Modell als
+zusätzlicher, erklärbarer Faktor in das Kandidatenranking ein:
+
+- Übereinstimmung mit guten Referenzen gibt einen moderaten Bonus;
+- Übereinstimmung mit schlechtem Feedback erhält eine deutlich stärkere Strafe;
+- Distanz, Höhenmeter und Himmelsrichtung bleiben eigenständige Ziele.
+
+Ein Feedback-Export wird nach `gpx-samples/` kopiert und anschließend
+`make analyze` ausgeführt. Beim nächsten Laden der App nutzt sie das
+aktualisierte Modell.
+
+Highlights werden zunächst in eine native ORS-Runde einsortiert. Zusätzliche
+Stützpunkte erhalten deren Grundform, anschließend routet ORS zwingend durch
+jedes Highlight zurück zum Start.
 
 Für den Serverbetrieb stehen zwei Container-Images, eine GitLab-CI-Pipeline und
 ein Portainer-Stack mit Watchtower bereit. Einrichtung, Volumes, Parameter und

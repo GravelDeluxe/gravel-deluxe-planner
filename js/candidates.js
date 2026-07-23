@@ -1,3 +1,6 @@
+import { scoreRouteAgainstReferences } from './reference-analysis.js';
+import { evaluateRouteConstraints } from './route-constraints.js';
+
 export function inRange(value, min, max) {
   return value >= min && value <= max;
 }
@@ -51,7 +54,18 @@ function relativeDeviation(value, min, max) {
 
 export function rankRoundTripCandidates(
   candidates,
-  { minKm, maxKm, minHm, maxHm, direction = 'any', start, limit = 3 },
+  {
+    minKm,
+    maxKm,
+    minHm,
+    maxHm,
+    direction = 'any',
+    start,
+    referenceModel = null,
+    allowMeadowEarth = true,
+    maxSlopePercent = 10,
+    limit = 3,
+  },
 ) {
   const kmMid = (minKm + maxKm) / 2;
   const hmMid = (minHm + maxHm) / 2;
@@ -65,10 +79,17 @@ export function rankRoundTripCandidates(
       const directionDeviation = direction === 'any' || routeHeading.bearing === null
         ? 0
         : angularDistance(routeHeading.bearing, DIRECTION_BEARINGS[direction]) / 180;
+      const reference = scoreRouteAgainstReferences(candidate.route.coords, referenceModel);
+      const constraints = evaluateRouteConstraints(candidate.route, {
+        allowMeadowEarth,
+        maxSlopePercent,
+      });
       const score =
         relativeDeviation(distKm, minKm, maxKm) * 2
         + relativeDeviation(ascendM, minHm, maxHm)
         + directionDeviation * 1.5
+        + reference.adjustment
+        + constraints.adjustment
         + Math.abs(distKm - kmMid) / Math.max(maxKm - minKm, 1) * 0.01
         + Math.abs(ascendM - hmMid) / Math.max(maxHm - minHm, 100) * 0.005;
       return {
@@ -78,7 +99,9 @@ export function rankRoundTripCandidates(
         ascentInRange,
         direction: routeHeading.cardinal,
         directionDeviation,
-        inRange: distanceInRange && ascentInRange,
+        reference,
+        constraints,
+        inRange: distanceInRange && ascentInRange && constraints.allowed,
         score,
       };
     })

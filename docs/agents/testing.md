@@ -6,7 +6,7 @@
 make validate
 ```
 
-Aktueller Stand: 58 Node-Tests, BRouter-Profilintegrität und eine reale
+Aktueller Stand: 81 Node-Tests, BRouter-Profilintegrität und eine reale
 Freiburg–Schwarzwald-Route mit `gravel-konstant` erfolgreich geprüft.
 
 ## Profilprüfung
@@ -41,4 +41,14 @@ Zu protokollieren:
 - Eine gewählte Himmelsrichtung beeinflusst das Ranking anhand des räumlichen
   Routenschwerpunkts; Tests decken geschlossene Nord- sowie West-/Ost-Runden ab.
 - `make smoke-ors` sendet eine echte Rundtour-Anfrage samt Custom-Model; dafür
-  ist kein API-Key nötig.
+  ist kein API-Key nötig. Nicht routbare, intern zufällig gesetzte ORS-Punkte
+  werden dabei mit bis zu acht Seeds und wechselnden Formpunktzahlen wiederholt.
+- Feedbacktests prüfen Scrubber-Index, Streckendistanz, umgekehrte IN-/OUT-
+  Reihenfolge, ungültige Markierungen sowie den Export der vollständigen Route.
+- Referenztests prüfen normales und Hammerhead-GPX, Rasterbildung,
+  Routenkennzahlen, positive Korridore, negative Feedbackpassagen und deren
+  Einfluss auf das Kandidatenranking.
+- ORS-, Constraint- und Highlighttests prüfen Oberflächen-Zusatzdaten,
+  Steigungsberechnung, Koordinatenkonvertierung, Via-Routing sowie die
+  räumliche Einsortierung verpflichtender Highlights. Der ORS-Smoke-Test
+  verwendet ausschließlich Encoded Values, die das Profil bereitstellt.

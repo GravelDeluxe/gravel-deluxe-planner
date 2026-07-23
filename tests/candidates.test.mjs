@@ -70,3 +70,37 @@ test('rankRoundTripCandidates: requested direction influences ranking', () => {
   assert.equal(ranked[0].id, 'west');
   assert.equal(ranked[0].direction, 'W');
 });
+
+test('rankRoundTripCandidates: bad feedback corridor lowers route rank', () => {
+  const good = {
+    ...candidate(40, 500, 'good'),
+    route: {
+      distanceM: 40000,
+      ascendM: 500,
+      coords: [[49, 9], [49.001, 9], [49.002, 9]],
+    },
+  };
+  const bad = {
+    ...candidate(40, 500, 'bad'),
+    route: {
+      distanceM: 40000,
+      ascendM: 500,
+      coords: [[49, 9.01], [49.001, 9.01], [49.002, 9.01]],
+    },
+  };
+  const referenceModel = {
+    schema: 'graveldeluxe-reference-model/v1',
+    goodCells: { '49.000,9.000': 2, '49.001,9.000': 2, '49.002,9.000': 2 },
+    badCells: { '49.000,9.010': 1, '49.001,9.010': 1, '49.002,9.010': 1 },
+  };
+  const ranked = rankRoundTripCandidates(
+    [bad, good],
+    {
+      minKm: 30, maxKm: 50, minHm: 200, maxHm: 800,
+      direction: 'any', start: [49, 9], referenceModel,
+    },
+  );
+  assert.equal(ranked[0].id, 'good');
+  assert.ok(ranked[0].reference.goodAffinity > 0);
+  assert.ok(ranked[1].reference.badCoverage > 0);
+});
