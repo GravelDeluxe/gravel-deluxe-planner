@@ -2,7 +2,7 @@ import { haversineM } from './geo.js';
 import { MEADOW_EARTH_SURFACES } from './route-constraints.js';
 
 const SURFACES = {
-  0: ['Unbekannt', '#c2410c'],
+  0: ['Unbekannt', '#94a3b8'],
   1: ['Befestigt', '#64748b'],
   2: ['Unbefestigt', '#d97706'],
   3: ['Asphalt', '#475569'],

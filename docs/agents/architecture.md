@@ -18,7 +18,8 @@ Browser -> Nginx -> /brouter -> BRouter -> gemountete .rd5-Segmente
                  -> /ors     -> ORS gravel-deluxe -> OSM-PBF + Graph
 ```
 
-Lokal zeigt `runtime-config.js` standardmäßig auf den öffentlichen BRouter.
+Lokal zeigt `runtime-config.js` auf `/brouter` und `/ors`. `npm run serve`
+leitet diese Anfragen an den Docker-Stack auf Port 8086 weiter.
 Das Container-Image überschreibt diese Datei mit
 `deploy/runtime-config.js`; dort ist der relative Endpunkt `/brouter`
 konfiguriert. Nginx proxyfiziert ihn zum Service `brouter:17777`.
@@ -52,7 +53,10 @@ Browserartefakt `data/reference-analysis.json` enthält ein Raster aus guten und
 schlechten Korridoren. `js/reference-analysis.js` bewertet ORS-Kandidaten gegen
 dieses Raster; negatives Feedback wirkt stärker als der positive Referenzbonus.
 Die Optimierung verändert nicht den ORS-Graph, sondern die transparente Auswahl
-der sechs erzeugten Kandidaten.
+der erzeugten Kandidaten (zehn native oder bis zu neun gerichtete Varianten).
+Aktuell werden alle negativen Rasterzellen zusätzlich als Sperrflächen an ORS
+übergeben. Die kontextabhängige Trennung von Feedbackstrafen und echten
+Sperren ist in Meilenstein M3 geplant.
 
 ## Profile
 
@@ -72,3 +76,12 @@ Zugang, technische Schwierigkeit und lokale Steigung gewichten. Es kann nicht
 zuverlässig die Zahl der Oberflächenwechsel, parallele Wegsprünge oder die
 Qualität einer kompletten Rundtour bewerten. Das folgt in Phase 2 außerhalb
 von BRouter.
+
+## App-Zustand
+
+`js/route-state.js` kapselt die Wiederherstellung gespeicherter Routen und die
+Umkehrung von Geometrie samt Oberflächenintervallen und Anstieg. Neue Einträge
+in localStorage tragen `graveldeluxe-saved-route/v2`. Änderungen an einer
+Rundenplanung verwerfen die bisherige Route und die Kandidaten. `requestSeq`
+verhindert die Übernahme veralteter Antworten, bricht HTTP-Anfragen aber noch
+nicht ab (Meilenstein M2).

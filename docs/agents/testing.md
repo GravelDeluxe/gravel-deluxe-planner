@@ -6,7 +6,7 @@
 make validate
 ```
 
-Aktueller Stand: 96 Node-Tests, BRouter-Profilintegrität und eine reale
+Aktueller Stand: 108 Node-Tests, BRouter-Profilintegrität und eine reale
 Freiburg–Schwarzwald-Route mit `gravel-konstant` erfolgreich geprüft.
 
 ## Profilprüfung
@@ -33,10 +33,10 @@ Zu protokollieren:
 - `npm run serve`
 - Originalprofil berechnet weiterhin eine Route.
 - Gravel Konstant ist auswählbar.
-- Beim öffentlichen BRouter erscheint der Fallback-Hinweis.
+- Bei explizit konfiguriertem öffentlichem BRouter erscheint der Fallback-Hinweis.
 - Im Container wird `/brouter` verwendet.
 - Auswahländerung routet eine bestehende manuelle Strecke neu.
-- Rundenmodus erzeugt sechs Varianten über das selbst gehostete ORS-Profil
+- Rundenmodus erzeugt zehn native Varianten über das selbst gehostete ORS-Profil
   `gravel-deluxe`, bewertet Distanz und Höhenmeter und zeigt die besten drei.
 - Eine gewählte Himmelsrichtung beeinflusst das Ranking anhand des räumlichen
   Routenschwerpunkts; Tests decken geschlossene Nord- sowie West-/Ost-Runden ab.
@@ -52,3 +52,19 @@ Zu protokollieren:
   Steigungsberechnung, Koordinatenkonvertierung, Via-Routing sowie die
   räumliche Einsortierung verpflichtender Highlights und Graph-Snapping. Der ORS-Smoke-Test
   verwendet ausschließlich Encoded Values, die das Profil bereitstellt.
+
+## Regressionen der App-Stabilisierung
+
+`tests/app-state.test.mjs` führt echte App-Eventhandler mit DOM-/Leaflet-Adaptern
+aus: Moduswechsel, geänderte Vorgaben, Speichern/Laden, Umkehren und Entfernen
+von Highlights. Diese Prüfung ersetzt keine visuelle Browserabnahme.
+`tests/route-state.test.mjs` prüft physisch gleichbleibende Oberflächen nach
+Umkehrung, neue Höhenmeter/Steigungen und ältere gespeicherte Einträge.
+Constrainttests prüfen fehlende, unbekannte und lückenhafte Oberflächen.
+
+`npm run analyze -- --check` prüft das eingecheckte Referenzmodell ohne
+Dateiänderung. Beide Compose-Dateien sind Bestandteil von `make validate`.
+
+Noch offen: Desktop-/Mobilabnahme im echten Browser und die systematische
+Qualitätsvergleichssammlung aus Meilenstein M2. Einzelne erfolgreiche
+Smoke-Routen sind kein Nachweis einer generell besseren Streckenführung.

@@ -10,6 +10,14 @@ test:
   image: node:22-alpine
   script:
     - npm test
+    - npm run analyze -- --check
+
+validate-compose:
+  stage: test
+  image: docker:27
+  script:
+    - docker compose -f deploy/compose.local.yml config --quiet
+    - docker compose -f deploy/portainer-stack.yml config --quiet
 
 .docker-build:
   stage: build
@@ -18,7 +26,7 @@ test:
     - name: docker:27-dind
       alias: docker
   before_script:
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 

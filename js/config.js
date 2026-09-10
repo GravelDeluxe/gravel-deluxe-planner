@@ -13,7 +13,7 @@ export const ROUTING_PROFILES = Object.freeze([
   },
   {
     id: GRAVEL_CONSTANT_PROFILE,
-    label: 'Gravel GravelDeluxe',
+    label: 'Gravel Konstant',
     description: 'Mehr zusammenhängender Gravel, weniger Hauptstraßen und steile Rampen.',
   },
 ]);

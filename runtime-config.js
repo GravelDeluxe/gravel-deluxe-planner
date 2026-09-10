@@ -1,5 +1,7 @@
-// Laufzeitkonfiguration. Für den öffentlichen BRouter die Zeile auskommentiert
-// lassen. Beim Eigenbetrieb auf den lokalen BRouter-Endpunkt zeigen lassen.
+// Eigenbetrieb: Nginx und der Dev-Server leiten diese Endpunkte an den lokalen
+// Stack weiter. Für Rundtouren zuerst `make setup` ausführen.
 globalThis.GRAVEL_PLANNER_CONFIG = {
-  // brouterBase: 'http://localhost:17777/brouter',
+  brouterBase: '/brouter',
+  orsBase: '/ors',
+  orsRequiresKey: false,
 };

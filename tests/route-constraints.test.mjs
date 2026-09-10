@@ -37,3 +37,20 @@ test('route constraints tolerate route data without extras', () => {
   assert.equal(result.allowed, true);
   assert.equal(result.surfaceAvailable, false);
 });
+
+test('missing, partial and explicitly unknown surfaces cannot verify a surface exclusion', () => {
+  for (const surfaceSegments of [[], [[0, 1, 3]], [[0, 2, 0]]]) {
+    const result = evaluateRouteConstraints(
+      { coords, distanceM: 222, surfaceSegments },
+      { allowMeadowEarth: false },
+    );
+    assert.equal(result.surfaceStatus, 'unknown');
+    assert.equal(result.allowed, false);
+  }
+  const verified = evaluateRouteConstraints(
+    { coords, distanceM: 222, surfaceSegments: [[0, 2, 3]] },
+    { allowMeadowEarth: false },
+  );
+  assert.equal(verified.surfaceStatus, 'verified');
+  assert.equal(verified.allowed, true);
+});

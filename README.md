@@ -2,7 +2,8 @@
 
 Statischer Gravel-Routenplaner (kein Build, kein Backend). Plant Routen bevorzugt
 über Schotter- und Waldwege via [BRouter](https://brouter.de) und erzeugt
-manuelle Strecken sowie geschlossene Rundtouren mit dem gewählten Profil.
+manuelle Strecken mit wählbarem BRouter-Profil sowie geschlossene Rundtouren
+mit dem eigenen ORS-Profil GravelDeluxe.
 
 ![Gravel Planner – Strecke von Freiburg in den Schwarzwald mit Distanz, Höhenmetern und Höhenprofil](screenshots/app.jpg)
 
@@ -68,12 +69,15 @@ Empfehlungen des ursprünglichen Autors.
 
     git clone https://github.com/GravelDeluxe/gravel-deluxe-planner.git
     cd gravel-deluxe-planner
-    npm run serve        # oder: python3 serve.py 8123
+    make setup           # einmalig: lokalen Routing-Stack einrichten
+    npm run serve        # Quellcode mit lokalem Routing, ohne App-Neubau
     # http://localhost:8123 im Browser öffnen
 
 Direktes Öffnen per `file://` funktioniert nicht (ES-Module brauchen HTTP).
 Der Dev-Server (`serve.py`) sendet No-Cache-Header — sonst liefert der Browser
-nach Code-Änderungen veraltete Module aus.
+nach Code-Änderungen veraltete Module aus. `/brouter` und `/ors` leitet er
+an den lokalen Stack auf Port 8086 weiter. Dafür muss der Stack laufen;
+Rundtouren benötigen keinen externen API-Key.
 
 ### Komplettes lokales System
 
@@ -88,10 +92,10 @@ Danach ist die App unter <http://localhost:8086> erreichbar. Weitere Befehle
 zeigt `make help`. Die lokalen `.rd5`-Daten liegen unter
 `local-data/segments4` und werden nicht in Git aufgenommen.
 
-## Gravel GravelDeluxe
+## Gravel Konstant und GravelDeluxe
 
 Zusätzlich zum unveränderten Originalprofil steht das neue Profil
-`gravel-konstant` unter dem Produktnamen **Gravel GravelDeluxe** zur Auswahl.
+`gravel-konstant` als **Gravel Konstant** im Streckenmodus zur Auswahl.
 Es bevorzugt zusammenhängende, gut fahrbare
 Gravel-Abschnitte, verteuert Hauptstraßen deutlich und bestraft sehr steile
 Rampen. Das Profil benötigt einen eigenen BRouter; auf der öffentlichen Instanz
@@ -101,7 +105,7 @@ Die App startet im Modus „Runde“ an der Home Base in Bad Rappenau. Rundtoure
 kommen aus dem eigenen ORS-Profil `gravel-deluxe`. Es basiert auf dem
 `cycling-mountain`-Encoder und ergänzt ein Custom-Model: Hauptstraßen,
 Schiebepassagen, Stufen und unpassierbare Wege werden stark abgewertet; ein
-guter paralleler Radweg gewinnt knapp gegen einen Track. Sechs Varianten werden
+guter paralleler Radweg gewinnt knapp gegen einen Track. Zehn native Varianten werden
 nach Distanz und Höhenmetern bewertet, die besten drei angezeigt. Manuelle
 Strecken verwenden weiterhin das ausgewählte BRouter-Profil.
 
@@ -148,7 +152,7 @@ aktualisierte Modell.
 Feedbackdateien enthalten Bodenabschnitte und einen sekundengenauen Zeitstempel
 im Dateinamen, sodass mehrere Exporte derselben benannten Route erhalten bleiben.
 
-Highlights werden zunächst in eine native ORS-Runde einsortiert. Zusätzliche
+Highlights werden zunächst in eine gerichtete Grundrunde einsortiert. Zusätzliche
 Stützpunkte erhalten deren Grundform, anschließend routet ORS zwingend durch
 jedes Highlight zurück zum Start.
 
@@ -156,6 +160,23 @@ Für den Serverbetrieb stehen zwei Container-Images, eine GitLab-CI-Pipeline und
 ein Portainer-Stack mit Watchtower bereit. Einrichtung, Volumes, Parameter und
 Teststrecken sind in [docs/phase-1-gravel-konstant.md](docs/phase-1-gravel-konstant.md)
 dokumentiert.
+
+## Stand und nächste Schritte
+
+Die verbindliche Arbeitsreihenfolge steht in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md):
+App-Stabilität → reproduzierbare Qualitätsmessung → erklärbare Bewertung →
+Serverbetrieb → Referenzanalyse und editierbarer GPX-Import.
+
+Gespeicherte Routen enthalten im Format `graveldeluxe-saved-route/v2` das
+Routingprofil, Oberflächenabschnitte, Modus, Highlights und alle Zielvorgaben.
+Ältere Einträge bleiben lesbar; verlorene Metadaten werden nicht nachträglich
+erfunden. Bei Änderungen an Rundenparametern oder Highlights werden Route und
+Vorschläge verworfen und müssen neu berechnet werden. Beim Umkehren einer
+Runde werden Oberflächen und Höhenmeter aktualisiert.
+
+Unbekannte oder nur teilweise erfasste Oberflächen gelten bei aktivem
+Wiese-/Erde-Ausschluss als nicht vollständig prüfbar. Sie werden nicht als
+bestätigte Einhaltung der Vorgabe angezeigt.
 
 ## Tests
 

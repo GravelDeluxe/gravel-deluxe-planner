@@ -1,8 +1,29 @@
 # Fortschritt
 
-Stand: 2026-07-23
+Stand: 2026-09-10
 
-## Erledigt
+## Aktueller Stand
+
+- Umsetzungsplan in M1–M5 mit Abhängigkeiten und Abnahmekriterien gegliedert;
+  die früheren Phasen bleiben als langfristige Spezifikation erhalten.
+- Speicherformat `graveldeluxe-saved-route/v2` erhält Profil, Oberflächen,
+  Modus, Highlights und alle Zielparameter. Alte Einträge bleiben lesbar.
+- Umkehrung einer Runde passt Oberflächenindizes und Anstieg an; alte
+  Vorschläge werden verworfen. Planungsänderungen und Laden entfernen
+  ebenfalls veraltete Kandidaten.
+- BRouter-Profilwahl nur noch im Streckenmodus. Dev-Server leitet `/brouter`
+  und `/ors` an den lokalen Stack weiter; unbekannte Oberflächen sind neutral
+  markiert und bestätigen keinen Oberflächenausschluss.
+- 108 Node-Tests erfolgreich, einschließlich App-Ereignissen mit
+  DOM-/Leaflet-Adaptern. Beide Compose-Dateien und Referenzmodell geprüft.
+- Portainer nutzt einen absoluten Host-Pfad für die ORS-Konfiguration;
+  CI prüft Compose und das reproduzierbare Referenzmodell.
+- Referenzmodell: 17 eindeutige gute Routen aus 18 GPX-Dateien, 4
+  Feedbackdateien mit 14 Passagen; 7.669 gute und 162 schlechte Rasterzellen.
+- Reale BRouter- und ORS-Smoke-Tests am 10.09.2026 erfolgreich; ORS liefert
+  Oberflächendaten. Ein Graph-Neubau ist derzeit keine offene Voraussetzung.
+
+## Bisher umgesetzt (Historie)
 
 - Leeres Verzeichnis als Git-Repository auf Basis von
   `DerRemo/gravel-planner` eingerichtet.
@@ -126,18 +147,22 @@ Stand: 2026-07-23
 - Spätere Funktion „Route mit editierbaren Wegpunkten laden und durch den
   GravelDeluxe-Algorithmus optimieren“ im Implementierungsplan vorgemerkt.
 
-## Noch offen vor Abschluss von Phase 1
+## Nächste Schritte
 
-- Die drei lokalen Testsegmente auf dem Zielserver bereitstellen; für eine
-  vollständige DACH-Abdeckung später weitere Segmente ergänzen.
-- Portainer-Stack mit dem tatsächlichen GitLab-Projektpfad abgleichen.
-- Beispielstrecken gegen `gravel` und `gravel-konstant` real berechnen und
-  Resultate dokumentieren.
-- UI einmal visuell im Browser prüfen.
-- Neuen ORS-Graph bei laufendem Docker bauen und `make smoke-ors` ausführen
-  (Docker Desktop war bei der Implementierung nicht gestartet).
+1. **M1 abschließen:** visuelle Desktop-/Mobilabnahme; der verfügbare
+   Computerzugang bietet derzeit keinen Browser. DOM-Adaptertests ersetzen
+   diese Abnahme nicht.
+2. **M2:** begrenzte, abbrechbare Kandidatensuche und reproduzierbare
+   Qualitätsvergleiche. Alle drei BRouter-Fixtures mit Original und neuem
+   Profil vergleichen; gerichtete ORS-Runden und Highlights separat prüfen.
+3. **M3:** Feedback nach Kontext statt pauschaler Rastersperren anwenden;
+   Oberflächenkontinuität, Hauptstraßen, Anstiegsqualität und erster Anstieg
+   als erklärbaren Report ergänzen.
+4. **M4:** GitHub-Origin mit GitLab-CI-/Registry-Veröffentlichung abgleichen,
+   Zielserver einrichten und Updates/Rollback praktisch prüfen.
+5. **M5:** OSM-Map-Matching für Referenzen, kalibrierbare Presets,
+   editierbarer GPX-Import und vollständige DACH-Abdeckung.
 
-## Phase 2
-
-- globale Bewertung von Oberfläche, Wechseln, Anstiegen und Überlappung;
-- Alternative 2/3 und erklärbare Teil-Scores.
+Details und Abnahmekriterien: `IMPLEMENTATION_PLAN.md`. Fehlender echter
+HTTP-Abbruch, Teilfehlerbehandlung und systematische Qualitätsnachweise sind
+bewusst noch offen; reine technische Smoke-Tests schließen sie nicht ab.

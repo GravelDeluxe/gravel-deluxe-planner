@@ -32,16 +32,19 @@
         <label><input type="radio" name="mode" value="manual" /> Strecke</label>
       </div>
 
-      <label class="field-label" for="routingProfile">Routingprofil</label>
+      <div id="manualProfileControls" hidden>
+      <label class="field-label" for="routingProfile">Streckenprofil</label>
       <select id="routingProfile" aria-describedby="routingProfileHelp">
         <option value="gravel">Gravel (Original)</option>
-        <option value="gravel-konstant" selected>Gravel GravelDeluxe</option>
+        <option value="gravel-konstant" selected>Gravel Konstant</option>
       </select>
       <p id="routingProfileHelp" class="field-help">
-        GravelDeluxe: Strecke über BRouter, Runde über den lokalen ORS.
+        Gravel Konstant bevorzugt gut fahrbare Gravel-Wege und meidet steile Rampen.
       </p>
+      </div>
 
       <div id="loopControls">
+        <p class="field-help">Rundtouren mit GravelDeluxe</p>
         <label for="loopKmMin">Distanzbereich (km)</label>
         <div class="search-row">
           <input id="loopKmMin" type="number" min="5" max="300" value="30" aria-label="Minimum km" />
@@ -78,7 +81,8 @@
         <button id="generateLoop" type="button">GravelDeluxe-Vorschläge</button>
         <div id="suggestions" aria-label="Routen-Vorschläge"></div>
         <div class="route-legend" aria-label="Streckenfarben">
-          <span><i class="legend-surface"></i>Bodenart</span>
+          <span><i class="legend-surface"></i>Schotter</span>
+          <span><i class="legend-unknown"></i>Unbekannt</span>
           <span><i class="legend-slope"></i>zu steil</span>
           <span><i class="legend-forbidden"></i>Wiese/Erde</span>
           <span><i class="legend-both"></i>beides</span>

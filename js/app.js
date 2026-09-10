@@ -15,6 +15,7 @@ import { buildHighlightWaypoints } from './highlights.js';
 import { generateCandidates, generateDirectionalCandidates } from './loop.js';
 import { searchPlace } from './search.js';
 import { listRoutes, saveRoute, deleteRoute } from './storage.js';
+import { restoreSavedRoute, reverseRoute } from './route-state.js';
 import { toGpx, escapeXml } from './gpx.js';
 import {
   routeIndexFromProgress,
@@ -106,6 +107,40 @@ const state = {
     passages: [],
   },
 };
+
+function updateModeControls() {
+  el('loopControls').hidden = state.mode !== 'loop';
+  el('manualProfileControls').hidden = state.mode !== 'manual';
+  document.querySelectorAll('input[name="mode"]').forEach((radio) => {
+    radio.checked = radio.value === state.mode;
+  });
+}
+
+function planningSettings() {
+  return {
+    minKm: Number(el('loopKmMin').value), maxKm: Number(el('loopKmMax').value),
+    minHm: Number(el('loopHmMin').value), maxHm: Number(el('loopHmMax').value),
+    direction: el('loopDirection').value,
+    allowMeadowEarth: el('allowMeadowEarth').checked,
+    maxSlopePercent: Number(el('maxSlopePercent').value),
+  };
+}
+
+function clearCandidates() {
+  state.candidates = [];
+  el('suggestions').innerHTML = '';
+}
+
+function invalidateLoop() {
+  if (state.mode !== 'loop') return;
+  requestSeq++;
+  state.busy = false;
+  clearCandidates();
+  state.route = null;
+  resetFeedback();
+  renderRoute();
+  setStatus('Planung geändert. Bitte neue Vorschläge erzeugen.');
+}
 
 function safeFilename(value, fallback = 'route') {
   const name = String(value || '').trim() || fallback;
@@ -311,6 +346,7 @@ function renderHighlights() {
 }
 
 async function reroute() {
+  clearCandidates();
   renderMarkers();
   if (state.waypoints.length < 2) {
     requestSeq++;
@@ -354,6 +390,8 @@ function clearAll() {
   state.candidates = [];
   state.highlights = [];
   state.highlightMode = false;
+  el('addHighlight').classList.remove('active');
+  el('addHighlight').textContent = 'Highlight auf Karte setzen';
   resetFeedback();
   renderMarkers();
   renderHighlights();
@@ -365,6 +403,7 @@ function clearAll() {
 map.on('click', (e) => {
   if (state.busy || state.feedback.active) return;
   if (state.highlightMode) {
+    invalidateLoop();
     state.highlights.push([e.latlng.lat, e.latlng.lng]);
     state.highlightMode = false;
     el('addHighlight').classList.remove('active');
@@ -396,6 +435,7 @@ el('addHighlight').addEventListener('click', () => {
 el('highlights').addEventListener('click', (event) => {
   const button = event.target.closest('button[data-i]');
   if (!button) return;
+  invalidateLoop();
   state.highlights.splice(Number(button.dataset.i), 1);
   renderHighlights();
 });
@@ -403,7 +443,7 @@ el('highlights').addEventListener('click', (event) => {
 document.querySelectorAll('input[name="mode"]').forEach((radio) =>
   radio.addEventListener('change', () => {
     state.mode = radio.value;
-    el('loopControls').hidden = state.mode !== 'loop';
+    updateModeControls();
     clearAll();
     setStatus(
       state.mode === 'loop'
@@ -421,14 +461,18 @@ el('routingProfile').addEventListener('change', () => {
   }
 });
 
-el('allowMeadowEarth').addEventListener('change', renderRoute);
-el('maxSlopePercent').addEventListener('input', renderRoute);
+for (const id of ['loopKmMin', 'loopKmMax', 'loopHmMin', 'loopHmMax', 'maxSlopePercent']) {
+  el(id).addEventListener('input', invalidateLoop);
+}
+for (const id of ['allowMeadowEarth', 'loopDirection']) {
+  el(id).addEventListener('change', invalidateLoop);
+}
 
 function renderSuggestions(activeIndex = -1) {
   el('suggestions').innerHTML = state.candidates
     .map(
       (c, i) => `<button type="button" class="suggestion${i === activeIndex ? ' active' : ''}" data-i="${i}">
-        ${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.reference?.goodAffinity ? ` · Referenz ${Math.round(c.reference.goodAffinity * 100)} %` : ''}${c.reference?.badCoverage ? ` · ⚠ ${Math.round(c.reference.badCoverage * 100)} % Feedback` : ''}${c.flow?.reversals || c.flow?.repeatedShare > 0.02 ? ' · ⚠ Fahrfluss' : ''}${!c.constraints?.surfaceAvailable && !el('allowMeadowEarth').checked ? ' · ⚠ Oberfläche nicht prüfbar' : ''}${c.inRange ? '' : ` (außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm', !c.constraints?.surfaceAllowed && 'Wiese/Erde', !c.constraints?.slopeAllowed && `Steigung ${c.constraints.maximumGrade.toFixed(1)} %`].filter(Boolean).join(' + ')})`}
+        ${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.reference?.goodAffinity ? ` · Referenz ${Math.round(c.reference.goodAffinity * 100)} %` : ''}${c.reference?.badCoverage ? ` · ⚠ ${Math.round(c.reference.badCoverage * 100)} % Feedback` : ''}${c.flow?.reversals || c.flow?.repeatedShare > 0.02 ? ' · ⚠ Fahrfluss' : ''}${c.constraints?.surfaceStatus === 'unknown' && !el('allowMeadowEarth').checked ? ' · ⚠ Oberfläche nicht prüfbar' : ''}${c.inRange ? '' : ` (außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm', !c.constraints?.surfaceAllowed && (c.constraints?.surfaceStatus === 'unknown' ? 'Oberfläche unbekannt' : 'Wiese/Erde'), !c.constraints?.slopeAllowed && `Steigung ${c.constraints.maximumGrade.toFixed(1)} %`].filter(Boolean).join(' + ')})`}
       </button>`,
     )
     .join('');
@@ -450,7 +494,7 @@ function selectCandidate(i) {
   const misses = [
     !c.distanceInRange && `${(c.route.distanceM / 1000).toFixed(1)} km`,
     !c.ascentInRange && `${Math.round(c.route.ascendM)} hm`,
-    !c.constraints?.surfaceAllowed && `${(c.constraints.meadowEarthM / 1000).toFixed(1)} km Wiese/Erde`,
+    !c.constraints?.surfaceAllowed && (c.constraints?.surfaceStatus === 'unknown' ? 'Oberfläche nicht vollständig prüfbar' : `${(c.constraints.meadowEarthM / 1000).toFixed(1)} km Wiese/Erde`),
     !c.constraints?.slopeAllowed && `${c.constraints.maximumGrade.toFixed(1)} % maximale Steigung`,
   ].filter(Boolean);
   setStatus(c.inRange ? '' : `Beste verfügbare Runde außerhalb des Zielbereichs: ${misses.join(', ')}.`);
@@ -535,7 +579,7 @@ el('feedbackExport').addEventListener('click', () => {
   setStatus('Feedback mit vollständiger Route und markierten Passagen heruntergeladen.');
 });
 
-// Sechs native ORS-Rundtouren erzeugen und nach Distanz UND Höhenmetern
+// Zehn native ORS-Rundtouren erzeugen und nach Distanz UND Höhenmetern
 // bewerten. Die drei besten werden angezeigt; die lokale Instanz braucht keinen Key.
 async function roundTripCandidates(
   start,
@@ -710,6 +754,7 @@ el('generateLoop').addEventListener('click', async () => {
     maxSlopePercent,
   });
   const seq = ++requestSeq;
+  clearCandidates();
   state.busy = true;
   setStatus('Vorschläge werden erzeugt …');
   try {
@@ -804,10 +849,11 @@ el('saveButton').addEventListener('click', () => {
       name,
       waypoints: state.waypoints,
       highlights: state.highlights,
-      settings: {
-        allowMeadowEarth: el('allowMeadowEarth').checked,
-        maxSlopePercent: Number(el('maxSlopePercent').value),
-      },
+      mode: state.mode,
+      routingProfile: state.routingProfile,
+      profile: state.route.profile,
+      surfaceSegments: state.route.surfaceSegments ?? [],
+      settings: planningSettings(),
       coords: state.route.coords,
       distanceM: state.route.distanceM,
       ascendM: state.route.ascendM,
@@ -833,27 +879,34 @@ el('savedRoutes').addEventListener('click', (e) => {
   requestSeq++; // invalidate any in-flight reroute/generation; this load owns the state now
   state.busy = false;
   resetFeedback();
-  state.waypoints = route.waypoints;
-  state.highlights = route.highlights ?? [];
+  const restored = restoreSavedRoute(route);
+  state.mode = restored.mode;
+  state.routingProfile = restored.routingProfile;
+  el('routingProfile').value = restored.routingProfile;
+  state.waypoints = restored.waypoints;
+  state.highlights = restored.highlights;
+  state.route = restored.route;
+  state.highlightMode = false;
+  el('addHighlight').classList.remove('active');
+  el('addHighlight').textContent = 'Highlight auf Karte setzen';
+  clearCandidates();
+  updateModeControls();
   el('routeName').value = route.name;
-  if (route.settings) {
-    el('allowMeadowEarth').checked = route.settings.allowMeadowEarth ?? true;
-    el('maxSlopePercent').value = route.settings.maxSlopePercent ?? 10;
-  }
-  state.route = {
-    coords: route.coords,
-    distanceM: route.distanceM,
-    ascendM: route.ascendM,
-    profile: 'gravel',
-  };
+  const settings = restored.settings;
+  for (const [id, key] of Object.entries({
+    loopKmMin: 'minKm', loopKmMax: 'maxKm', loopHmMin: 'minHm', loopHmMax: 'maxHm',
+    loopDirection: 'direction', maxSlopePercent: 'maxSlopePercent',
+  })) el(id).value = settings[key];
+  el('allowMeadowEarth').checked = settings.allowMeadowEarth;
   renderMarkers();
   renderHighlights();
   renderRoute();
   map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
   refreshTilesSoon();
-  setStatus('');
+  setStatus(route.profile ? '' : 'Ältere Route geladen: ursprüngliches Profil und fehlende Oberflächendaten sind unbekannt.');
 });
 
+updateModeControls();
 renderSavedRoutes();
 renderMarkers();
 renderHighlights();
@@ -865,10 +918,11 @@ el('reverseButton').addEventListener('click', () => {
     state.waypoints.reverse();
     reroute();
   } else if (state.route) {
-    // Runde (ein Wegpunkt): Linie umdrehen reicht, kein Neu-Routing nötig.
     resetFeedback();
-    state.route = { ...state.route, coords: [...state.route.coords].reverse() };
+    clearCandidates();
+    state.route = reverseRoute(state.route);
     renderRoute();
+    setStatus('Fahrtrichtung umgekehrt; Oberflächen und Höhenmeter aktualisiert.');
   } else {
     setStatus('Keine Route zum Umkehren.');
   }

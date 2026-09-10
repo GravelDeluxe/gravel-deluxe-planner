@@ -102,6 +102,7 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
 .route-legend span { display: inline-flex; align-items: center; gap: 4px; }
 .route-legend i { width: 15px; height: 4px; border-radius: 3px; background: #ea580c; }
 .route-legend .legend-slope { background: #fb923c; }
+.route-legend .legend-unknown { background: #94a3b8; }
 .route-legend .legend-forbidden { background: #92400e; }
 .route-legend .legend-both { background: #7e22ce; }
 .route-direction-arrow {
@@ -398,6 +399,10 @@ button:focus-visible {
   .panel { left: 10px; right: 10px; top: 10px; width: auto; }
   .statsbar { left: 10px; right: 10px; transform: none; justify-content: center; }
   #profile { width: 40vw; max-width: 200px; }
+  .statsbar { gap: 10px; padding: 10px; flex-wrap: wrap; }
+  .statsbar .scrub-overlay { width: 100%; min-width: 0; }
+  .scrub-overlay #profile { width: 100%; max-width: none; }
+  .panel { max-height: calc(100% - 190px); }
 }
 
 /* ---- Reduced motion -------------------------------------------------------- */

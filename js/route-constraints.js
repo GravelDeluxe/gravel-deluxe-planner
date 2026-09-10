@@ -50,11 +50,23 @@ export function evaluateRouteConstraints(
     && route.surfaceSegments.length > 0;
   const meadowEarthM = meadowEarthDistanceM(coords, route?.surfaceSegments);
   const maximumGrade = maximumSustainedGrade(coords);
-  const surfaceAllowed = allowMeadowEarth || meadowEarthM < 20;
+  const knownEdges = new Set();
+  for (const [from, to, value] of route?.surfaceSegments ?? []) {
+    if (!(Number(value) > 0)) continue;
+    for (let index = Math.max(0, from); index < Math.min(to, coords.length - 1); index++) {
+      knownEdges.add(index);
+    }
+  }
+  const surfaceVerified = coords.length > 1 && knownEdges.size === coords.length - 1;
+  const surfaceStatus = meadowEarthM >= 20 ? 'violation'
+    : surfaceVerified ? 'verified' : 'unknown';
+  const surfaceAllowed = allowMeadowEarth || surfaceStatus === 'verified';
   const slopeAllowed = maximumGrade <= maxSlopePercent;
   return {
     meadowEarthM,
     surfaceAvailable,
+    surfaceVerified,
+    surfaceStatus,
     maximumGrade,
     surfaceAllowed,
     slopeAllowed,

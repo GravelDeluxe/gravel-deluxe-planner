@@ -19,7 +19,11 @@ Stacks:
 2. lädt fehlende Testsegmente;
 3. baut Web-App und BRouter lokal;
 4. startet `deploy/compose.local.yml`;
-5. berechnet eine echte Route mit `gravel-konstant`.
+5. berechnet eine echte Route mit `gravel-konstant` und eine ORS-Rundtour.
+
+`npm run serve` bedient anschließend den aktuellen Quellcode auf Port 8123
+und leitet Routinganfragen an den laufenden Stack auf Port 8086 weiter.
+Der Dev-Server bindet ausschließlich an 127.0.0.1.
 
 Die lokale App läuft standardmäßig auf Port `8086`, BRouter zusätzlich für
 Diagnosen auf `17777`. `make help` listet Betrieb, Logs und Prüfungen.
@@ -74,5 +78,25 @@ Stack-Variablen:
 3. taggt mit Commit-SHA und `latest`;
 4. pusht in `$CI_REGISTRY_IMAGE/app` und `$CI_REGISTRY_IMAGE/brouter`.
 
+Zusätzlich prüft CI die Reproduzierbarkeit von `data/reference-analysis.json`
+mit `npm run analyze -- --check` sowie beide Compose-Dateien. Echte
+Routingintegration auf einem Runner mit Kartendaten ist weiterhin offen.
+
 Portainer benötigt Registry-Zugang. Watchtower mountet dafür wie bei den
 bestehenden Tools `/root/.docker` read-only.
+
+## Zielserver vorbereiten
+
+Vor dem Start des Portainer-Stacks muss die versionierte Datei
+`deploy/ors-config.yml` nach `${ORS_DATA_PATH}/config/ors-config.yml` auf dem
+Docker-Host kopiert werden, standardmäßig nach
+`/mnt/gravel-router/ors/config/ors-config.yml`. Der Stack verwendet diesen
+absoluten Host-Pfad; ein relativer Pfad zum Portainer-Arbeitsverzeichnis wird
+nicht vorausgesetzt. OSM-PBF und BRouter-Segmente sind ebenfalls vorab auf dem
+Host bereitzustellen. Ein geändertes ORS-Buildprofil kann einen Graph-Neubau
+verlangen; dafür den bisherigen Graphen sichern.
+
+Der lokale Git-Origin zeigt auf GitHub (`GravelDeluxe/gravel-deluxe-planner`),
+während CI und Registry-Vorlage GitLab voraussetzen. Vor Veröffentlichung
+müssen Spiegelung/Build-Auslöser, tatsächlicher Namespace und Registry-Zugang
+bestätigt werden. Eine erfolgreiche lokale Compose-Prüfung belegt dies nicht.

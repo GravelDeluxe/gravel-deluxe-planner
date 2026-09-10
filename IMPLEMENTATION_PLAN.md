@@ -1,6 +1,157 @@
-# Gravel Planner – Implementierungsplan
+# Gravel Planner – Umsetzungsplan
 
-## Ziel
+Stand: 2026-09-10. Dieser Plan trennt den überprüften Iststand, die nächste
+Arbeitsreihenfolge und das langfristige Produktziel. Die bisherigen Phasen
+bleiben unten als fachliche Spezifikation erhalten; sie sind keine Aussage
+über den Fertigstellungsgrad.
+
+## Architektur und Grenzen
+
+- Manuelle Strecken: BRouter mit `gravel` (Original) oder dem separaten
+  `gravel-konstant`. Das Originalprofil bleibt unverändert.
+- Rundtouren: selbst gehosteter ORS mit `gravel-deluxe`, Custom-Model,
+  Kandidatenerzeugung und globaler Nachbewertung im Browser.
+- Aktuelle ORS-Abdeckung: Baden-Württemberg. DACH bleibt das Releaseziel;
+  eine regionale Zwischenversion ist ausdrücklich noch kein DACH-Release.
+- Ein Kantenprofil ersetzt keine globale Bewertung von Oberflächenwechseln,
+  parallelen Wegen, Anstiegsfolgen oder Rundkursqualität.
+- GPX-Referenzen liefern bisher ein geografisches Rastermodell. Es gibt noch
+  kein OSM-Map-Matching und keine regionsübergreifende Kalibrierung aus
+  Oberflächen-/Straßenklassen der Referenzrouten.
+
+## Überprüfter Iststand
+
+| Bereich | Vorhanden | Noch nicht erfüllt |
+| --- | --- | --- |
+| Routing | BRouter, ORS, native und gerichtete Runden, Highlights, drei Vorschläge | systematischer Qualitätsnachweis, DACH-Abdeckung |
+| Ranking | Distanz, Höhenmeter, Richtung, Steigung, Wiese/Erde, Referenzkorridore, Fahrfluss | Oberflächenkontinuität, Hauptstraßenanteil, kontextabhängige Parallelwege, Anstiegsqualität, erster Anstieg |
+| Referenzen | 18 GPX-Dateien, 17 eindeutige Routen, 4 Feedbackdateien mit 14 Passagen | Map-Matching, Referenzbericht mit gleichen Kennzahlen wie Routenscore, administrativer Import |
+| App | Karte, Oberflächenabschnitte, Höhenprofil, Scrubber, Feedback, lokale Speicherung, GPX-Export | erklärbare Teil-Scores, vollständige Oberflächenlegende, visuelle Desktop-/Mobilabnahme |
+| Betrieb | lokaler Docker-Stack, Smoke-Tests, GitLab-CI, Portainer-Vorlage | bestätigter GitHub→GitLab-Veröffentlichungsweg, Zielserverabnahme, Datenupdates und Monitoring |
+
+Am 10.09.2026 bestanden die realen BRouter-/ORS-Smoke-Tests. ORS lieferte
+Oberflächenabschnitte; ein Graph-Neubau ist deshalb nicht mehr pauschal als
+offene Voraussetzung zu behandeln. Diese Prüfung belegt die technische
+Funktion, noch keine verbesserte Routenqualität.
+
+## M1 – App-Zustand und Entwicklungssetup stabilisieren
+
+Priorität: zuerst. Die unten markierten Reparaturen sind implementiert.
+
+- [x] Versioniertes Speicherformat für tatsächliches Profil, Oberflächen,
+  Planungsmodus, Highlights und sämtliche Zielvorgaben; alte Einträge bleiben
+  lesbar, nicht gespeicherte Daten bleiben ausdrücklich unbekannt.
+- [x] Beim Umkehren einer Runde Oberflächenintervalle umindizieren, Anstieg neu
+  berechnen und die bisherige Kandidatenbewertung verwerfen.
+- [x] Bei geänderten Rundenparametern oder Highlights alte Route/Vorschläge
+  verwerfen; beim Laden einer Route fremde Vorschläge entfernen.
+- [x] BRouter-Profilwahl ausschließlich im Streckenmodus anzeigen.
+- [x] Fehlende, unbekannte oder lückenhafte Oberflächendaten von bestätigter
+  Einhaltung eines Oberflächenausschlusses unterscheiden.
+- [x] Dev-Server über denselben lokalen Routing-Stack betreiben; kein
+  funktionsloser externer ORS-Standard ohne API-Key-Eingabe.
+- [x] Regressionstests für App-Ereignisse, Speicherformat, Umkehrung und
+  Oberflächenunsicherheit ergänzen.
+- [ ] Browserabnahme auf Desktop und schmalem Mobilbildschirm durchführen:
+  Planung → Variante → Speichern/Laden → Umkehren → Feedback → Export.
+
+Abnahme: Metadaten passen nach jeder Aktion zur angezeigten Geometrie;
+veraltete Vorschläge lassen sich nicht übernehmen. Automatisierte Prüfungen
+bestehen. Die visuelle Abnahme bleibt separat offen, solange kein Browser
+für die Prüfung verfügbar ist.
+
+## M2 – Routensuche begrenzen und Qualität reproduzierbar messen
+
+Priorität: unmittelbar nach M1, Voraussetzung für weitere Score-Kalibrierung.
+
+- [ ] Anfrageverwaltung aus `js/app.js` herauslösen: begrenzte Parallelität,
+  Gesamtbudget, Timeout, Abbruchsignal und sichtbarer Fortschritt. Ein
+  Planungswechsel soll laufende Anfragen tatsächlich abbrechen.
+- [ ] Erfolgreiche Kandidaten bei Teilfehlern behalten; native, gerichtete und
+  Highlight-Routen mit denselben Fehler- und Budgetregeln behandeln.
+- [ ] Feste Seeds und Fixtures für Home Base, gerichtete Runden, Highlights,
+  Graphgrenzen sowie Freiburg/Schwarzwald und weitere DACH-Testorte anlegen.
+- [ ] BRouter `gravel` und `gravel-konstant` gegen alle vorhandenen
+  Phase-1-Fixtures vergleichen; ORS mit identischen Zielvorgaben separat
+  benchmarken. Unterschiedliche Router nicht als reinen Profilvergleich werten.
+- [ ] Pro Lauf Engine-/Profil-/Modellversion, Datenstand, Laufzeit, Fehlerquote,
+  Distanzabweichung, Höhenmeter, Steigung, bekannte/unbekannte Oberfläche,
+  Wechsel und Doppelbefahrung als JSON und lesbaren Bericht speichern.
+- [ ] Smoke-Test und App dieselben Routingbausteine verwenden lassen;
+  derzeit fehlen dem Smoke-Fallback unter anderem die Snap-Schritte der App.
+
+Abnahme: Eine Änderung lässt sich gegen einen gespeicherten Ausgangsstand
+vergleichen. Lange/fehlgeschlagene Anfragen blockieren die Bedienung nicht;
+Ergebnisse verworfener Planungen tauchen nicht wieder auf. Verbesserungen
+brauchen sowohl Messwerte als auch Kartenprüfung.
+
+## M3 – Routenqualität erklären und Feedback präzisieren
+
+Abhängig von M2; Gewichte erst nach Vergleichsmessungen ändern.
+
+- [ ] Negatives Feedback nach Bedeutung behandeln: kontextabhängige
+  Abstecher-/Zig-Zag-Kritik als Rankingfaktor; echte zu meidende Passagen
+  gesondert kennzeichnen. Nicht jede negative Rasterzelle pauschal sperren.
+- [ ] Korridore auf das Suchgebiet begrenzen; nahe Parallelwege getrennt
+  behandeln. Qualitäts- und Vertrauensangaben im Referenzmodell führen.
+- [ ] Routenreport mit Oberflächen-km/%, Datenlücken, Wechseln pro 10 km,
+  Hauptstraßenanteil, Doppelbefahrung und erklärbaren Teil-Scores ergänzen.
+- [ ] Lange moderate Anstiege (4–8 %), steile Rampen und Abfahrten separat
+  bewerten; ersten Anstieg >20 hm und den Zielbereich 5–10 km ausweisen.
+- [ ] Erster Anstieg: Aus / Präferenz / Pflicht samt nachvollziehbarer
+  Meldung bei ungeeignetem Gelände implementieren.
+- [ ] Ähnliche Kandidaten erkennen, damit drei Vorschläge echte Alternativen
+  darstellen. Karte mit vollständiger Oberflächenlegende und Datenunsicherheit.
+
+Abnahme: Nutzer verstehen, warum eine Route vor einer anderen liegt.
+Kritisiertes Zig-Zag sperrt nicht automatisch einen guten benachbarten Weg.
+Eine fehlende Datengrundlage erscheint niemals als bestätigte Qualität.
+
+## M4 – Serverbetrieb zuverlässig veröffentlichen
+
+Kann nach M1 parallel zur fachlichen Arbeit vorbereitet werden.
+
+- [ ] GitHub-Origin und vorgesehenes GitLab-CI-/Registry-Ziel abgleichen;
+  Spiegelung oder tatsächlichen Build-Auslöser und Namespace dokumentieren.
+- [x] CI um Referenzmodell-Konsistenz und beide Compose-Prüfungen ergänzen.
+- [x] ORS-Konfiguration im Portainer-Stack über einen absoluten persistenten
+  Host-Pfad mounten; Bereitstellung in der Betriebsdokumentation festhalten.
+- [ ] Zielserver mit Routingdaten und Konfiguration bestücken; Build/Push,
+  Registry-Zugang, Start, echte Routen und Neustart prüfen.
+- [ ] Automatische Datenaktualisierung mit Versionsnachweis, vorbereitetem
+  Graphwechsel und getesteter Rückkehr zum vorherigen Graphen einrichten.
+- [ ] Backend-Healthchecks, Anfrage-/Ressourcenlimits und Monitoring ergänzen;
+  Update-/Rollback-Verhalten bei getrennten Images prüfen.
+- [ ] Persistente GPX-/Feedback-/Analyseablage und Trennung zwischen
+  öffentlicher Planung und Administration festlegen.
+
+Abnahme: Ein frischer Zielhost lässt sich anhand der Anleitung einrichten;
+Ausfall, Neustart, Datenwechsel und Rollback sind praktisch geprüft.
+
+## M5 – Referenzanalyse und editierbarer Import
+
+Abhängig von M2/M3; keine vorgezogene ML-Implementierung.
+
+- [ ] GPX auf OSM-Wege mappen und mit den gleichen Qualitätskennzahlen wie
+  Kandidaten analysieren. Region, Saison, Fahrradtyp, Bewertung, Notizen,
+  Distanz-/Höhenmeterklasse sowie Gegenbeispiele unterstützen.
+- [ ] Regelbasierte Zielbereiche und Gewichtungen aus 20–50 vielfältigen
+  bewerteten Referenzrouten ableiten und gegen zurückgehaltene Routen prüfen.
+- [ ] Einzelne GPX-/Feedbackroute als editierbare Planung laden: Start, Ende,
+  Highlights und geeignete Stützpunkte rekonstruieren; Highlights erhalten.
+- [ ] Verständliche Presets für Gravel-Fokus, Komfort/Technik, Anstiege und
+  Rundkurspräferenz ergänzen; Expertengewichtungen erklärbar halten.
+- [ ] DACH-Datenabdeckung und feldgeprüfte Referenzsammlung vervollständigen.
+
+Abnahme: Referenzanalyse, Routenreport und Ranking verwenden dieselben
+Kennzahlen. Importierte Touren lassen sich gezielt bearbeiten und exportieren;
+Kalibrierung verbessert auch bisher nicht verwendete Testtouren.
+
+---
+
+# Fachliche Spezifikation und langfristiges Zielbild
+
+## Produktziel
 
 Auf Basis von [DerRemo/gravel-planner](https://github.com/DerRemo/gravel-planner) entsteht ein erweitertes Gravel-Routing mit einem neuen bRouter-Profil. Es soll gleichmäßigere, besser vorhersehbare Gravel-Rundkurse erzeugen und aus bestehenden, als gut bewerteten GPX-Touren messbar lernen.
 
@@ -32,7 +183,7 @@ Nutzereingaben
   └─> beste Route + Karten-Layer + GPX-Export
 ```
 
-## Phase 0 – Technische Bestandsaufnahme
+## Spezifikation 0 – Technische Basis
 
 ### Aufgaben
 
@@ -48,7 +199,7 @@ Nutzereingaben
 
 Kurze technische Dokumentation sowie eine lauffähige lokale Entwicklungsumgebung.
 
-## Phase 1 – Profil „Gravel Konstant“
+## Spezifikation 1 – Profil „Gravel Konstant“
 
 ### Wegklassen und Oberflächen
 
@@ -85,7 +236,7 @@ Für jedes Steigungssegment werden Distanz, Höhenmeter, Durchschnittssteigung u
 
 Erste Version des bRouter-Profils inklusive dokumentierter Parameter und Teststrecken.
 
-## Phase 2 – Globale Rundkurs- und Kandidatenbewertung
+## Spezifikation 2 – Globale Rundkurs- und Kandidatenbewertung
 
 ### Mehrere Kandidaten erzeugen
 
@@ -111,7 +262,7 @@ Die Regel für den ersten Anstieg ist eine **weiche Präferenz**: In flachem Gel
 
 Eine Route wird mit einem verständlichen Qualitätsprofil angezeigt; Nutzer können alternativ auch die zweit- und drittbeste Variante wählen.
 
-## Phase 3 – GPX-Referenzrouten analysieren
+## Spezifikation 3 – GPX-Referenzrouten analysieren
 
 ### Datenmodell
 
@@ -140,7 +291,7 @@ Ein statistisches oder ML-basiertes Ranking wird erst dann geprüft, wenn ausrei
 
 Ein Analysebericht je GPX-Datei und eine aggregierte Empfehlung für Profilgewichtungen.
 
-## Phase 4 – Kartenvisualisierung
+## Spezifikation 4 – Kartenvisualisierung
 
 ### Karten-Layer
 
@@ -164,7 +315,7 @@ Für die berechnete Route wird angezeigt:
 
 Nutzer können vor dem GPX-Export nachvollziehen, warum eine Route als gute Gravel-Route eingestuft wird.
 
-## Phase 5 – Einstellungen und Bedienung
+## Spezifikation 5 – Einstellungen und Bedienung
 
 Das Profil bietet einfache Regler statt technischer Profilparameter:
 
@@ -188,7 +339,7 @@ Neuoptimierung einer einzelnen Route.
 
 Die erweiterten Gewichtungen bleiben als Experteneinstellungen verfügbar, werden aber mit verständlichen Beschreibungen versehen.
 
-## Phase 6 – Testen und Kalibrieren
+## Spezifikation 6 – Testen und Kalibrieren
 
 1. Feste Testsammlung mit Startorten, Distanzen, Höhenmeterzielen und Referenz-GPX-Dateien erstellen.
 2. Für jede Änderung an Profil oder Score automatisch Kennzahlen vergleichen.
@@ -205,7 +356,7 @@ Referenzmodell nach Problemtyp getrennt. Zusätzlich bewertet ein allgemeiner
 Fahrfluss-Score starke Richtungswechsel, Kehrtwenden und wiederholte Passagen,
 damit flüssiges Fahren bereits ohne manuelles Feedback bevorzugt wird.
 
-## Abnahmekriterien für einen ersten Release
+## Abnahmekriterien für den vollständigen DACH-Release
 
 - Das normale Gravel-Profil funktioniert unverändert weiter.
 - „Gravel Konstant“ erzeugt auf der Testsammlung nachweisbar weniger Oberflächenwechsel oder erklärt begründete Ausnahmen.

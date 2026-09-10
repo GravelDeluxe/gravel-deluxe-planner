@@ -41,8 +41,15 @@ model.summary.gpxFiles = names.filter((name) => name.toLowerCase().endsWith('.gp
 model.summary.duplicates = duplicates.length;
 model.duplicates = duplicates;
 
-await fs.mkdir(path.dirname(outputFile), { recursive: true });
-await fs.writeFile(outputFile, `${JSON.stringify(model, null, 2)}\n`);
+const serialized = `${JSON.stringify(model, null, 2)}\n`;
+if (process.argv.includes('--check')) {
+  if (await fs.readFile(outputFile, 'utf8') !== serialized) {
+    throw new Error('Referenzmodell ist veraltet. Bitte npm run analyze ausführen und das Ergebnis committen.');
+  }
+} else {
+  await fs.mkdir(path.dirname(outputFile), { recursive: true });
+  await fs.writeFile(outputFile, serialized);
+}
 
 console.log(`Referenzanalyse: ${model.summary.goodRoutes} eindeutige gute Routen`);
 console.log(`Dubletten: ${model.summary.duplicates}`);

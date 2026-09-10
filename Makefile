@@ -71,7 +71,7 @@ ors-rebuild: doctor ors-data
 	@echo "ORS baut GravelDeluxe mit WaySurfaceType neu. Fortschritt: make logs"
 
 $(ORS_PBF):
-	@echo "Lade OSM-Extrakt Regierungsbezirk Stuttgart für OpenRouteService ..."
+	@echo "Lade OSM-Extrakt Baden-Württemberg für OpenRouteService ..."
 	@curl --fail --location --continue-at - \
 		--output "$@.part" "$(ORS_PBF_URL)"
 	@mv "$@.part" "$@"
@@ -120,6 +120,7 @@ test:
 validate: analyze test
 	@rg -q '"schema": "graveldeluxe-reference-model/v1"' data/reference-analysis.json
 	$(COMPOSE) config >/dev/null
+	docker compose -f deploy/portainer-stack.yml config >/dev/null
 	@rg -q 'WaySurfaceType:' deploy/ors-config.yml
 	git diff --check
 	@echo "Repository-Prüfungen erfolgreich."
