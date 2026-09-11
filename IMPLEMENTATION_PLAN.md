@@ -1,6 +1,6 @@
 # Gravel Planner – Umsetzungsplan
 
-Stand: 2026-09-10. Dieser Plan trennt den überprüften Iststand, die nächste
+Stand: 2026-09-11. Dieser Plan trennt den überprüften Iststand, die nächste
 Arbeitsreihenfolge und das langfristige Produktziel. Die bisherigen Phasen
 bleiben unten als fachliche Spezifikation erhalten; sie sind keine Aussage
 über den Fertigstellungsgrad.
@@ -15,9 +15,9 @@ bleiben unten als fachliche Spezifikation erhalten; sie sind keine Aussage
   eine regionale Zwischenversion ist ausdrücklich noch kein DACH-Release.
 - Ein Kantenprofil ersetzt keine globale Bewertung von Oberflächenwechseln,
   parallelen Wegen, Anstiegsfolgen oder Rundkursqualität.
-- GPX-Referenzen liefern bisher ein geografisches Rastermodell. Es gibt noch
-  kein OSM-Map-Matching und keine regionsübergreifende Kalibrierung aus
-  Oberflächen-/Straßenklassen der Referenzrouten.
+- GPX-Referenzen liefern ein geografisches Rastermodell und werden innerhalb
+  des aktuellen ORS-Graphs zusätzlich auf OSM-Kanten gemappt. Eine
+  regionsübergreifende Kalibrierung aus Oberflächen-/Straßenklassen fehlt noch.
 
 ## Überprüfter Iststand
 
@@ -25,7 +25,7 @@ bleiben unten als fachliche Spezifikation erhalten; sie sind keine Aussage
 | --- | --- | --- |
 | Routing | BRouter, ORS, native und gerichtete Runden, Highlights, drei Vorschläge | systematischer Qualitätsnachweis, DACH-Abdeckung |
 | Ranking | Distanz, Höhenmeter, Richtung, Steigung, Wiese/Erde, Referenzkorridore, Fahrfluss | Oberflächenkontinuität, Hauptstraßenanteil, kontextabhängige Parallelwege, Anstiegsqualität, erster Anstieg |
-| Referenzen | 18 GPX-Dateien, 17 eindeutige Routen, 4 Feedbackdateien mit 14 Passagen, optionale Metadaten und Gegenbeispiele | Map-Matching, Referenzbericht mit gleichen Kennzahlen wie Routenscore, administrativer Import |
+| Referenzen | 37 GPX-Dateien, 35 eindeutige Routen, 4 Feedbackdateien mit 14 Passagen, Map-Matching, Qualitätsanreicherung, optionale Metadaten und Gegenbeispiele | regionsübergreifende Graphabdeckung, separate Testsammlung, administrativer Import |
 | App | Karte, Qualitätsreport, Feedback, lokale Speicherung, GPX-Export sowie editierbarer GPX-/Feedbackimport | visuelle Desktop-/Mobilabnahme und Kalibrierung der neuen Kennzahlen |
 | Betrieb | lokaler Docker-Stack, Smoke-Tests, GitLab-CI, Portainer-Vorlage | bestätigter GitHub→GitLab-Veröffentlichungsweg, Zielserverabnahme, Datenupdates und Monitoring |
 
@@ -94,7 +94,7 @@ Abhängig von M2; Gewichte erst nach Vergleichsmessungen ändern.
   gesondert kennzeichnen. Nicht jede negative Rasterzelle pauschal sperren.
 - [x] Feedbackkorridore auf das Suchgebiet begrenzen, nahe Parallelwege durch
   Geometrienähe trennen und Qualitäts-/Vertrauensangaben führen.
-- [ ] Positive Referenzkorridore ebenfalls weggenau statt im groben Raster
+- [x] Positive Referenzkorridore ebenfalls weggenau statt im groben Raster
   bewerten; dafür ist das OSM-Map-Matching aus M5 erforderlich.
 - [x] Routenreport mit Oberflächen-km/%, Datenlücken, Wechseln pro 10 km,
   Hauptstraßenanteil, Doppelbefahrung und erklärbaren Teil-Scores ergänzen.
@@ -136,7 +136,7 @@ Abhängig von M2/M3; keine vorgezogene ML-Implementierung.
 
 - [x] GPX auf Kanten des selbst gehosteten ORS-/OSM-Graphen mappen und den
   positiven Referenzvergleich bei identischem Graphstand weggenau ausführen.
-- [x] Die 15 vom aktuellen Graph abgedeckten GPX tracktreu rekonstruieren und
+- [x] Die vom aktuellen Graph abgedeckten GPX tracktreu rekonstruieren und
   mit allen Oberflächen-, Straßen- und Anstiegskennzahlen des Kandidatenreports
   analysieren; Ergebnisse unter 70 % Tracktreue verwerfen.
 - [x] Geometrie-, Fahrfluss- und Höhenkennzahlen der guten GPX mit derselben
@@ -144,10 +144,11 @@ Abhängig von M2/M3; keine vorgezogene ML-Implementierung.
 - [x] Region, Saison, Fahrradtyp, Bewertung, Notizen,
   Distanz-/Höhenmeterklasse sowie Gegenbeispiele über optionale
   `.gpx.meta.json`-Dateien unterstützen.
-- [x] Regelbasierte Zielbereiche und Gewichtungen aus den aktuell 17
+- [x] Regelbasierte Zielbereiche und Gewichtungen aus den aktuell 35
   eindeutigen guten Referenzrouten ableiten und per Leave-one-out prüfen.
-- [ ] Sammlung auf 20–50 vielfältige Routen erweitern und gegen eine separate,
-  bei der Ableitung nicht verwendete Testsammlung prüfen.
+- [x] Sammlung auf 20–50 vielfältige Routen erweitern.
+- [ ] Gegen eine separate, bei der Ableitung nicht verwendete Testsammlung
+  prüfen.
 - [x] Einzelne GPX-/Feedbackroute als editierbare Planung laden: Start, Ende,
   Highlights und geeignete Stützpunkte rekonstruieren; Highlights erhalten.
 - [ ] Verständliche Presets für Gravel-Fokus, Komfort/Technik, Anstiege und

@@ -103,5 +103,11 @@ console.log(`Feedback: ${model.summary.feedbackFiles} Dateien, ${model.summary.b
 console.log(`Korridore: ${model.summary.goodCells} gut, ${model.summary.badCells} schlecht`);
 console.log(`Aufbaurahmen: ${Object.keys(model.structureFrame.dimensions).length} gelernte Kennzahlen`);
 console.log(`Leave-one-out: Median ${model.structureValidation.medianAdjustment.toFixed(2)}, P80 ${model.structureValidation.p80Adjustment.toFixed(2)}`);
+console.log(`Graphabdeckung: ${model.summary.matchedRoutes} mit ORS-Kanten, ${model.summary.unmatchedRoutes} außerhalb`);
+for (const route of analyzed.filter((candidate) => candidate.edgeIds.length === 0)) {
+  const centerLat = (route.bounds[0][0] + route.bounds[1][0]) / 2;
+  const centerLon = (route.bounds[0][1] + route.bounds[1][1]) / 2;
+  console.log(`  außerhalb: ${route.source} (${centerLat.toFixed(4)}, ${centerLon.toFixed(4)})`);
+}
 console.log(`Angereicherte Referenzen: ${model.summary.enrichedRoutes}`);
 console.log(`Ausgabe: ${path.relative(process.cwd(), outputFile)}`);

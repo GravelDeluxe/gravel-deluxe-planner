@@ -805,7 +805,7 @@ async function roundTripCandidates(
         },
         routeThroughSnappedWaypoints,
       );
-      valid = await Promise.all(
+      const guidedResults = await Promise.allSettled(
         guided.map(async (candidate) => {
           let route = candidate.route;
           if (highlights.length || shapePoints.length) {
@@ -823,6 +823,10 @@ async function roundTripCandidates(
           };
         }),
       );
+      valid = guidedResults
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value);
+      firstError ??= guidedResults.find((result) => result.status === 'rejected')?.reason;
     } catch (guidedError) {
       firstError = guidedError;
     }
@@ -849,7 +853,7 @@ async function roundTripCandidates(
         },
         routeThroughSnappedWaypoints,
       );
-      valid = await Promise.all(
+      const fallbackResults = await Promise.allSettled(
         fallback.map(async (candidate) => {
           let route = candidate.route;
           if (highlights.length || shapePoints.length) {
@@ -865,6 +869,13 @@ async function roundTripCandidates(
           };
         }),
       );
+      valid = fallbackResults
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value);
+      if (!valid.length) {
+        throw fallbackResults.find((result) => result.status === 'rejected')?.reason
+          ?? new Error('Keine gestützte ORS-Runde gefunden');
+      }
     } catch (fallbackError) {
       throw new Error(
         `ORS konnte weder native noch gestützte Rundtouren erzeugen. `

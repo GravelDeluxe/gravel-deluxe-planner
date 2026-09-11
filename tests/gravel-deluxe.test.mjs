@@ -15,3 +15,9 @@ test('route constraints do not introduce unsupported custom-model expressions', 
   });
   assert.deepEqual(model, buildGravelDeluxeCustomModel());
 });
+
+test('GravelDeluxe penalties keep the routable graph connected', () => {
+  const model = buildGravelDeluxeCustomModel();
+  assert.equal(model.priority.find((rule) => rule.if === 'get_off_bike').multiply_by, 0.01);
+  assert.equal(model.priority.find((rule) => rule.if === 'road_class == STEPS').multiply_by, 0.01);
+});

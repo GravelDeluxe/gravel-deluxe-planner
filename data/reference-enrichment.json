@@ -2,6 +2,192 @@
   "schema": "graveldeluxe-reference-enrichment/v1",
   "graphTimestamp": "2026-07-23T18:54:59Z",
   "routes": {
+    "2021-04-21_351902941_Annasee & Bleichsee Gravel Trails in den Löwensteiner Bergen - #GravelDeluxe.gpx": {
+      "accepted": true,
+      "overlap": 0.7800306876193498,
+      "waypointCount": 46,
+      "structure": {
+        "ascentPer10Km": 125.5504947723186,
+        "repeatedShare": 0.011872128287339564,
+        "sharpTurnsPer10Km": 2.9097606852995996,
+        "reversalsPer10Km": 0.8614099126745701,
+        "closureShare": 0.0006006078404731512,
+        "firstClimbKm": 2.24,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 9.690861517588914,
+        "surfaceChangesPer10Km": 13.383126433000966,
+        "mainRoadShare": 0,
+        "gravelShare": 0.48894006443928056
+      }
+    },
+    "2021-07-24_430512842_Gravel Fun zum Wunnenstein - GravelDeluxe #shorts.gpx": {
+      "accepted": true,
+      "overlap": 0.8439278504701769,
+      "waypointCount": 41,
+      "structure": {
+        "ascentPer10Km": 67.80904710271923,
+        "repeatedShare": 0,
+        "sharpTurnsPer10Km": 2.204307861757613,
+        "reversalsPer10Km": 0.32757993769429583,
+        "closureShare": 0.0006656173446551401,
+        "firstClimbKm": 0.04,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 1.6378996884714792,
+        "surfaceChangesPer10Km": 11.475893347781104,
+        "mainRoadShare": 0,
+        "gravelShare": 0.3202744341390299
+      }
+    },
+    "2021-10-05_507233685_Mucho Gravel Quer durch Talheim, Untergruppenbach und Donbronn - #GravelDeluxe.gpx": {
+      "accepted": true,
+      "overlap": 0.7982297299109865,
+      "waypointCount": 36,
+      "structure": {
+        "ascentPer10Km": 149.8034040719595,
+        "repeatedShare": 0.1240985694805976,
+        "sharpTurnsPer10Km": 3.0012367036608865,
+        "reversalsPer10Km": 0.3366368630830551,
+        "closureShare": 0.00001149426787175075,
+        "firstClimbKm": 1,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 11.782290207906927,
+        "surfaceChangesPer10Km": 11.818911379104533,
+        "mainRoadShare": 0.00023793708899938902,
+        "gravelShare": 0.432847603949067
+      }
+    },
+    "2022-06-01_790205032_Gravelbike freundliche Trails Heuchelberg & Zweifelberg - GravelDeluxe.gpx": {
+      "accepted": false,
+      "overlap": 0.6521959584042067,
+      "waypointCount": 46,
+      "reason": "zu geringe Trackübereinstimmung"
+    },
+    "2024-05-31_1504877341_FR St Johann aufs Horn.gpx": {
+      "accepted": false,
+      "reason": "außerhalb des ORS-Graphs"
+    },
+    "2024-06-08_1636160151_Liebliches Taubertal auf dem Gravelbike - Röttingen _ Roth am See _ Rothenburg ob der Tauber - GravelDeluxe.gpx": {
+      "accepted": false,
+      "reason": "ORS 404"
+    },
+    "2024-08-31_1832652605_100+km Unser Tag auf dem Gravelbike entlang von Murr, Rems und Neckar mit Gravel-Einlagen - GravelDeluxe (1).gpx": {
+      "accepted": false,
+      "reason": "ORS 400"
+    },
+    "2025-04-15_2139843669_Trollingravel Warp - scouted by GravelDeluxe _ RIDEFAR Community Ride on September 14.gpx": {
+      "accepted": false,
+      "reason": "ORS 400"
+    },
+    "2025-05-19_2244269143_05 - Orbetello Halbinsel.gpx": {
+      "accepted": false,
+      "reason": "außerhalb des ORS-Graphs"
+    },
+    "2025-05-29_2281489919_Rouvy Schauinsland Fixed.gpx": {
+      "accepted": false,
+      "reason": "ORS 404"
+    },
+    "2025-08-14_2493202691_Graveltour in den Haßbergen – Steinerne Zeugen - GravelDeluxe.gpx": {
+      "accepted": false,
+      "reason": "außerhalb des ORS-Graphs"
+    },
+    "2025-08-17_2496242010_Graveltour in den Haßbergen –  Grenzerfahrung mit Weitblick - GravelDeluxe.gpx": {
+      "accepted": false,
+      "reason": "außerhalb des ORS-Graphs"
+    },
+    "2025-08-18_2496215086_Graveltour in den Haßbergen – Wald, Wasser, Wein - GravelDeluxe.gpx": {
+      "accepted": false,
+      "reason": "außerhalb des ORS-Graphs"
+    },
+    "2026-03-08_2815693004_GR Mosbach Frühling GUZ.gpx": {
+      "accepted": true,
+      "overlap": 0.7576023524789052,
+      "waypointCount": 46,
+      "structure": {
+        "ascentPer10Km": 90.57741147717311,
+        "repeatedShare": 0.036652870088875224,
+        "sharpTurnsPer10Km": 1.3681135712766646,
+        "reversalsPer10Km": 0.3904198770567807,
+        "closureShare": 0,
+        "firstClimbKm": 7.92,
+        "moderateClimbsPer50Km": 0.9760496926419517,
+        "steepClimbsPer50Km": 4.880248463209759,
+        "surfaceChangesPer10Km": 6.45090513564204,
+        "mainRoadShare": 0.0015956927742077464,
+        "gravelShare": 0.06745688943628357
+      }
+    },
+    "2026-07-12_3048491366_GR Minneburg V3.gpx": {
+      "accepted": true,
+      "overlap": 0.7796744043245194,
+      "waypointCount": 46,
+      "structure": {
+        "ascentPer10Km": 136.1949552209976,
+        "repeatedShare": 0.030384229532321214,
+        "sharpTurnsPer10Km": 2.5709945567816694,
+        "reversalsPer10Km": 1.1458710174843547,
+        "closureShare": 0,
+        "firstClimbKm": 4.36,
+        "moderateClimbsPer50Km": 0.8184792982031106,
+        "steepClimbsPer50Km": 9.821751578437327,
+        "surfaceChangesPer10Km": 9.03314932041982,
+        "mainRoadShare": 0,
+        "gravelShare": 0.3041611196374168
+      }
+    },
+    "2026-07-12_3093981443_GR Weit West.gpx": {
+      "accepted": true,
+      "overlap": 0.822803091639485,
+      "waypointCount": 46,
+      "structure": {
+        "ascentPer10Km": 107.3366341206279,
+        "repeatedShare": 0.023504086315805733,
+        "sharpTurnsPer10Km": 1.4773250701863703,
+        "reversalsPer10Km": 0.15925316635108,
+        "closureShare": 0,
+        "firstClimbKm": 1.56,
+        "moderateClimbsPer50Km": 0.7962658317554,
+        "steepClimbsPer50Km": 4.7775949905324,
+        "surfaceChangesPer10Km": 8.604885837650912,
+        "mainRoadShare": 0,
+        "gravelShare": 0.24842499803306353
+      }
+    },
+    "2026-08-14_3099761651_Gravel-Tour Schwäbisch Hall Alternative.gpx": {
+      "accepted": true,
+      "overlap": 0.7320684830378851,
+      "waypointCount": 47,
+      "structure": {
+        "ascentPer10Km": 116.14936014147136,
+        "repeatedShare": 0.01647489954366104,
+        "sharpTurnsPer10Km": 1.3454745123217446,
+        "reversalsPer10Km": 0.360712298575998,
+        "closureShare": 0,
+        "firstClimbKm": 4.4,
+        "moderateClimbsPer50Km": 0.4508903732199975,
+        "steepClimbsPer50Km": 6.763355598299962,
+        "surfaceChangesPer10Km": 7.944061149820119,
+        "mainRoadShare": 0.00033655285538050254,
+        "gravelShare": 0.2749882376560935
+      }
+    },
+    "2026-08-15_3112996867_GR Osten Mix.gpx": {
+      "accepted": true,
+      "overlap": 0.8001768860748967,
+      "waypointCount": 47,
+      "structure": {
+        "ascentPer10Km": 93.90721470136086,
+        "repeatedShare": 0.004000017849924221,
+        "sharpTurnsPer10Km": 2.3049430723320135,
+        "reversalsPer10Km": 0.5325550928243526,
+        "closureShare": 0,
+        "firstClimbKm": 1.6,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 3.550367285495685,
+        "surfaceChangesPer10Km": 7.466699986525213,
+        "mainRoadShare": 0.001451182304948468,
+        "gravelShare": 0.18240844447925064
+      }
+    },
     "Burg Sinsheim - mehr HM.gpx": {
       "accepted": true,
       "overlap": 0.8396912228236079,

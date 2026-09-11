@@ -142,8 +142,48 @@ Nach einem echten Graphwechsel müssen beide Befehle erneut laufen, weil sich
 interne Kanten-IDs ändern können. Das Matching-Artefakt enthält deshalb den
 Graph-Zeitstempel; Kandidaten verwenden den exakten Kantenvergleich nur bei
 demselben Graphstand und fallen sonst automatisch auf den geometrischen
-Vergleich zurück. Zwei vorhandene Trentino-Routen liegen außerhalb des aktuellen
-Baden-Württemberg-Graphs und bleiben deshalb geometrisch bewertet.
+Vergleich zurück. Referenzen außerhalb Baden-Württembergs bleiben deshalb
+geometrisch bewertet. `make analyze` nennt ihre Dateinamen und Mittelpunkte.
+Der aktuelle Bestand enthält sieben solcher Routen: drei in den Haßbergen,
+eine in Tirol, eine bei Orbetello und zwei im Trentino. Daraus ergeben sich
+zusätzlich die Geofabrik-Gebiete Bayern, Österreich, Italy Centro und Italy
+Nord-Est. Alle Gebiete in einen ORS-Graph aufzunehmen erfordert einen
+zusammengeführten OSM-Extrakt; die reine Erkennung lädt oder ersetzt noch keine
+Routingdaten.
+
+#### Externe Referenzgebiete in den ORS-Graph aufnehmen
+
+ORS baut jedes Profil aus genau einer konfigurierten Quelldatei. Für mehrere
+getrennte Gebiete werden deshalb zuerst PBF-Extrakte desselben OSM-Datenstands
+mit `osmium` vorbereitet und anschließend zusammengeführt:
+
+1. Baden-Württemberg vollständig behalten. Für die vorhandenen externen GPX
+   Unterfranken/Mittelfranken, Österreich, Italy Centro und Italy Nord-Est von
+   Geofabrik laden.
+2. Große Quellen wie Österreich und die italienischen Regionen mit
+   `osmium extract --bbox ... --strategy complete_ways` auf großzügige
+   Routenkorridore zuschneiden. Der Rand muss auch den gewünschten Radius neuer
+   Rundtouren abdecken; nur zum Referenzmatching genügt ein kleinerer Puffer.
+3. Vor dem Zusammenführen mit `osmium fileinfo` prüfen, dass die
+   `osmosis_replication_timestamp`-Werte zusammenpassen. Danach die Dateien mit
+   `osmium merge ... -o gravel-regions.osm.pbf` vereinigen.
+4. `source_file` in `deploy/ors-config.yml`, `deploy/compose.local.yml` und für
+   den Server in `deploy/portainer-stack.yml` auf
+   `/home/ors/files/gravel-regions.osm.pbf` setzen.
+5. Graph und Referenzartefakte neu erzeugen:
+
+   ```sh
+   make ors-rebuild
+   make match-references
+   make enrich-references
+   make analyze
+   ```
+
+`make ors-rebuild` sichert den bisherigen Graphen. Ein regionsübergreifender
+Graph braucht beim Bau deutlich mehr Arbeitsspeicher und Plattenplatz als der
+aktuelle Baden-Württemberg-Graph. Für reine Lernreferenzen sind zugeschnittene
+Korridore daher sinnvoller als vollständige Länderextrakte.
+
 Die Anreicherung rekonstruiert jede abgedeckte GPX mit höchstens 50
 Stützpunkten und übernimmt Oberfläche, Straßenklasse und Höhenprofil nur ab
 70 % geometrischer Übereinstimmung mit dem Originaltrack.
@@ -171,8 +211,8 @@ Kehrtwenden, steilen Anstiegen, Wechseln und Hauptstraße gilt nur die obere
 Grenze; weniger bleibt ausdrücklich gut. Beim Gravelanteil gilt nur die untere
 Grenze. Echte Bandbreiten gelten für Höhenmeterdichte und Anstiegslage.
 Abweichungen erhöhen den Kandidatenscore nachvollziehbar, bleiben aber weiche
-Hinweise. Oberfläche, Hauptstraße und Gravelanteil stammen aus den
-15 ausreichend tracktreu auf dem lokalen ORS rekonstruierten Referenzen. Eine
+Hinweise. Oberfläche, Hauptstraße und Gravelanteil stammen aktuell aus den
+23 ausreichend tracktreu auf dem lokalen ORS rekonstruierten Referenzen. Eine
 Leave-one-out-Auswertung prüft jede gute Route gegen einen Rahmen, der ohne
 genau diese Route berechnet wurde.
 

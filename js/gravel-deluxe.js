@@ -1,8 +1,11 @@
 // ORS-Custom-Model für Rundkurse. Das cycling-mountain-Basismodell bleibt
 // erhalten ("recommended"); diese Regeln schärfen nur die GravelDeluxe-Ziele.
 const BASE_PRIORITY = Object.freeze([
-    { if: 'get_off_bike', multiply_by: 0 },
-    { if: 'road_class == STEPS', multiply_by: 0 },
+    // Null würde die Kante vollständig aus dem flexiblen Routing entfernen.
+    // Sehr kleine Faktoren halten Start-/Zielpunkte und Teilnetze erreichbar,
+    // ohne Schiebe- oder Treppenpassagen attraktiv zu machen.
+    { if: 'get_off_bike', multiply_by: 0.01 },
+    { if: 'road_class == STEPS', multiply_by: 0.01 },
     { if: 'road_class == PRIMARY', multiply_by: 0.2 },
     { if: 'road_class == SECONDARY', multiply_by: 0.45 },
     { if: 'road_class == TERTIARY', multiply_by: 0.75 },
