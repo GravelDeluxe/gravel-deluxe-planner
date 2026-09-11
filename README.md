@@ -124,18 +124,25 @@ Feedback-Modus erzeugten `*__feedback.json`-Dateien in `gpx-samples/`:
 make analyze
 ```
 
-Mit laufendem lokalem ORS werden Referenzen einmalig weggenau auf dessen
-Graphkanten gemappt:
+Nach neuen guten GPX-Dateien werden die Referenzen mit laufendem lokalem ORS
+weggenau auf dessen Graphkanten gemappt und mit Qualitätsdaten angereichert:
 
 ```sh
 make match-references
 make enrich-references
 ```
 
-Das Matching muss nach jedem ORS-Graphwechsel erneut laufen. Das Artefakt
-enthält den Graph-Zeitstempel; Kandidaten verwenden den exakten Kantenvergleich
-nur bei demselben Graphstand und fallen sonst auf den geometrischen Vergleich
-zurück. Zwei vorhandene Trentino-Routen liegen außerhalb des aktuellen
+Ein **ORS-Graphwechsel** bedeutet, dass ORS sein routbares Wegenetz neu aus den
+OSM-Daten aufgebaut hat. Das geschieht insbesondere nach `make ors-rebuild`,
+nach Austausch/Aktualisierung der `.osm.pbf`-Datei oder nach Änderungen an den
+beim Graphbau gespeicherten Eigenschaften. Ein normaler App-Neustart oder der
+Neubau nur des Web-App-Containers ist kein Graphwechsel.
+
+Nach einem echten Graphwechsel müssen beide Befehle erneut laufen, weil sich
+interne Kanten-IDs ändern können. Das Matching-Artefakt enthält deshalb den
+Graph-Zeitstempel; Kandidaten verwenden den exakten Kantenvergleich nur bei
+demselben Graphstand und fallen sonst automatisch auf den geometrischen
+Vergleich zurück. Zwei vorhandene Trentino-Routen liegen außerhalb des aktuellen
 Baden-Württemberg-Graphs und bleiben deshalb geometrisch bewertet.
 Die Anreicherung rekonstruiert jede abgedeckte GPX mit höchstens 50
 Stützpunkten und übernimmt Oberfläche, Straßenklasse und Höhenprofil nur ab

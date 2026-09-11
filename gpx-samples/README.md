@@ -46,18 +46,24 @@ Höhenmeterklasse. Mit `"kind": "counterexample"` wird der gesamte Track als
 negatives Beispiel behandelt; `problem` beschreibt den Grund. Ohne Metadaten
 gilt eine GPX weiterhin als gute, mit 5 bewertete Gravelbike-Referenz.
 
-Nach neuen GPX- oder Feedbackdateien das Referenzmodell aktualisieren:
+Nach neuen Feedbackdateien genügt:
 
 ```sh
 make analyze
 ```
 
-Nach einem ORS-Graphwechsel oder für vollständige Qualitätswerte zusätzlich:
+Nach neuen guten GPX-Dateien sowie nach einem ORS-Graphwechsel:
 
 ```sh
 make match-references
 make enrich-references
 ```
+
+Ein ORS-Graphwechsel ist ein Neuaufbau des routbaren Wegenetzes, etwa durch
+`make ors-rebuild`, eine neue `.osm.pbf`-Datei oder geänderte Eigenschaften des
+Routingprofils. Ein normaler Neustart der App ist kein Graphwechsel. Die
+internen Kanten-IDs sind an einen konkreten Graphbau gebunden; ein gespeicherter
+Zeitstempel verhindert, dass alte IDs mit einem neuen Graph verglichen werden.
 
 Die Anreicherung übernimmt Oberflächen-, Straßen- und Höhenwerte nur, wenn die
 ORS-Rekonstruktion mindestens 70 % des ursprünglichen GPX-Tracks trifft.
