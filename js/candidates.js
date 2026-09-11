@@ -1,6 +1,12 @@
-import { scoreRouteAgainstReferences } from './reference-analysis.js';
+import {
+  analyzeTourStructure,
+  scoreRouteAgainstReferences,
+  scoreTourStructure,
+} from './reference-analysis.js';
 import { evaluateRouteConstraints } from './route-constraints.js';
 import { evaluateRouteFlow } from './route-flow.js';
+import { analyzeRouteQuality, firstClimbAssessment } from './route-quality.js';
+import { routeOverlap } from './route-geometry.js';
 
 export function inRange(value, min, max) {
   return value >= min && value <= max;
@@ -65,6 +71,7 @@ export function rankRoundTripCandidates(
     referenceModel = null,
     allowMeadowEarth = true,
     maxSlopePercent = 10,
+    firstClimbMode = 'off',
     limit = 3,
   },
 ) {
@@ -80,19 +87,32 @@ export function rankRoundTripCandidates(
       const directionDeviation = direction === 'any' || routeHeading.bearing === null
         ? 0
         : angularDistance(routeHeading.bearing, DIRECTION_BEARINGS[direction]) / 180;
-      const reference = scoreRouteAgainstReferences(candidate.route.coords, referenceModel);
+      const reference = scoreRouteAgainstReferences(
+        candidate.route.coords,
+        referenceModel,
+        {
+          edgeIds: candidate.route.edgeIds,
+          graphTimestamp: candidate.route.matchingGraphTimestamp,
+        },
+      );
       const constraints = evaluateRouteConstraints(candidate.route, {
         allowMeadowEarth,
         maxSlopePercent,
       });
       const flow = evaluateRouteFlow(candidate.route.coords);
+      const quality = analyzeRouteQuality(candidate.route);
+      const structure = analyzeTourStructure(candidate.route);
+      const learnedStructure = scoreTourStructure(structure, referenceModel?.structureFrame);
+      const firstClimb = firstClimbAssessment(quality.terrain, firstClimbMode);
       const score =
         relativeDeviation(distKm, minKm, maxKm) * 2
         + relativeDeviation(ascendM, minHm, maxHm)
         + directionDeviation * 1.5
         + reference.adjustment
+        + learnedStructure.adjustment
         + constraints.adjustment
-        + flow.adjustment
+        + (learnedStructure.available ? 0 : flow.adjustment)
+        + firstClimb.adjustment
         + Math.abs(distKm - kmMid) / Math.max(maxKm - minKm, 1) * 0.01
         + Math.abs(ascendM - hmMid) / Math.max(maxHm - minHm, 100) * 0.005;
       return {
@@ -105,11 +125,18 @@ export function rankRoundTripCandidates(
         reference,
         constraints,
         flow,
-        inRange: distanceInRange && ascentInRange && constraints.allowed,
+        quality,
+        structure,
+        learnedStructure,
+        firstClimb,
+        inRange: distanceInRange && ascentInRange && constraints.allowed && firstClimb.allowed,
         score,
       };
     })
     .sort((a, b) => {
+      if (firstClimbMode === 'required' && a.firstClimb.allowed !== b.firstClimb.allowed) {
+        return Number(b.firstClimb.allowed) - Number(a.firstClimb.allowed);
+      }
       // Eine eingehaltene Maximalsteigung schlägt immer die Distanzvorgabe:
       // lieber zusätzliche Kilometer als eine ungewollt steile Rampe.
       if (a.constraints.slopeAllowed !== b.constraints.slopeAllowed) {
@@ -117,5 +144,18 @@ export function rankRoundTripCandidates(
       }
       return a.score - b.score;
     })
-    .slice(0, limit);
+    .reduce((selected, candidate, _index, ranked) => {
+      if (selected.length >= limit) return selected;
+      if (!selected.some((other) => routeOverlap(candidate.route.coords, other.route.coords) >= 0.8)) {
+        selected.push(candidate);
+      }
+      // Falls alle Varianten ähnlich sind, trotzdem bis zum Limit auffüllen.
+      if (_index === ranked.length - 1 && selected.length < limit) {
+        for (const fallback of ranked) {
+          if (!selected.includes(fallback)) selected.push(fallback);
+          if (selected.length >= limit) break;
+        }
+      }
+      return selected;
+    }, []);
 }

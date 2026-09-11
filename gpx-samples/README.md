@@ -29,8 +29,22 @@ enthält:
 - jede schlechte Passage mit exaktem IN-/OUT-Punkt, Teilgeometrie,
   Problemauswahl und optionaler Notiz.
 
+Neue Passagen enthalten zusätzlich `effect` und `confidence`. `penalty` ist
+der Standard und beeinflusst ausschließlich das Ranking. `avoid` ist für
+eindeutig beobachtete, dauerhaft zu meidende Passagen vorgesehen und erzeugt
+einen schmalen Sperrkorridor. Dateien ohne diese Felder gelten aus
+Kompatibilitätsgründen als ältere Rankinghinweise.
+
 Damit ist kein separates GPX nötig. Für gute Referenzrouten bleibt GPX das
 bevorzugte Format.
+
+Zu jeder GPX kann optional eine gleichnamige Metadatendatei mit der Endung
+`.gpx.meta.json` liegen. Ein Beispiel steht in
+`reference.gpx.meta.json.example`. Unterstützt werden Region, Saison,
+Fahrradtyp, Bewertung von 1 bis 5, Notizen sowie Distanz- und
+Höhenmeterklasse. Mit `"kind": "counterexample"` wird der gesamte Track als
+negatives Beispiel behandelt; `problem` beschreibt den Grund. Ohne Metadaten
+gilt eine GPX weiterhin als gute, mit 5 bewertete Gravelbike-Referenz.
 
 Nach neuen GPX- oder Feedbackdateien das Referenzmodell aktualisieren:
 
@@ -38,6 +52,17 @@ Nach neuen GPX- oder Feedbackdateien das Referenzmodell aktualisieren:
 make analyze
 ```
 
+Nach einem ORS-Graphwechsel oder für vollständige Qualitätswerte zusätzlich:
+
+```sh
+make match-references
+make enrich-references
+```
+
+Die Anreicherung übernimmt Oberflächen-, Straßen- und Höhenwerte nur, wenn die
+ORS-Rekonstruktion mindestens 70 % des ursprünglichen GPX-Tracks trifft.
+
 Die Anwendung lädt anschließend `data/reference-analysis.json` und verwendet
 gute Korridore als weiche Präferenz sowie schlechte Passagen als starke
-Abwertung beim Routenranking.
+Abwertung beim Routenranking. Nur ausdrücklich gesperrte neue Passagen werden
+bereits bei der Routensuche vermieden.

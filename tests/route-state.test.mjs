@@ -35,6 +35,8 @@ test('legacy routes retain unknown metadata and get usable planning defaults', (
   assert.equal(restored.mode, 'loop');
   assert.equal(restored.route.profile, null);
   assert.deepEqual(restored.route.surfaceSegments, []);
+  assert.deepEqual(restored.shapePoints, []);
+  assert.equal(restored.importedTrack, null);
   assert.equal(restored.settings.maxSlopePercent, 8);
   assert.equal(restored.settings.minKm, 30);
 });

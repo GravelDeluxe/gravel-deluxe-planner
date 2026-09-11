@@ -17,7 +17,7 @@
     ],
     "distance_influence": 70
   },
-  "extra_info": ["surface"],
+  "extra_info": ["surface", "waytype"],
   "elevation": true,
   "instructions": false
 }

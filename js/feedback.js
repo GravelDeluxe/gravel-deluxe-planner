@@ -15,7 +15,7 @@ export function distanceToIndex(coords, index) {
   return distanceM;
 }
 
-export function buildBadPassage(coords, inIndex, outIndex, { problem, note = '' } = {}) {
+export function buildBadPassage(coords, inIndex, outIndex, { problem, note = '', effect = 'penalty', confidence = 'observed' } = {}) {
   if (!coords?.length) throw new Error('Keine Route vorhanden');
   if (!Number.isInteger(inIndex) || !Number.isInteger(outIndex)) {
     throw new Error('IN- und OUT-Punkt fehlen');
@@ -31,6 +31,8 @@ export function buildBadPassage(coords, inIndex, outIndex, { problem, note = '' 
     end: passageCoords.at(-1).slice(0, 3),
     distanceM: Math.round(distanceToIndex(passageCoords, passageCoords.length - 1)),
     problem: problem || 'anderes',
+    effect: effect === 'avoid' ? 'avoid' : 'penalty',
+    confidence: confidence === 'observed' ? 'observed' : 'suspected',
     note: String(note).trim(),
     coords: passageCoords.map((point) => point.slice(0, 3)),
   };
@@ -47,6 +49,8 @@ export function buildFeedbackPayload(route, passages, metadata = {}) {
       ascendM: route.ascendM,
       coords: route.coords.map((point) => point.slice(0, 3)),
       surfaceSegments: (route.surfaceSegments ?? []).map((segment) => [...segment]),
+      waytypeSegments: (route.waytypeSegments ?? []).map((segment) => [...segment]),
+      elevationAvailable: route.elevationAvailable,
     },
     passages,
     metadata,

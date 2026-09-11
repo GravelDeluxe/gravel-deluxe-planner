@@ -52,6 +52,8 @@ Empfehlungen des ursprünglichen Autors.
 - Distanz, Höhenmeter (für Runden robust aus verrauschten SRTM-Höhen berechnet:
   Void-Füllung → Median-Filter → Anstieg per Hysterese), Höhenprofil.
 - Ortssuche (Nominatim), Speichern (localStorage), GPX-Export.
+- GPX- und Feedbackdateien als editierbare Planung laden: Rundkurse erhalten
+  automatisch verteilte Formpunkte, GPX-Wegpunkte bleiben Pflicht-Highlights.
 - Feedback-Modus: Route scrubben, schlechte Passagen per IN/OUT markieren und
   als JSON einschließlich vollständiger Route und Analysemetadaten exportieren.
 - Frei wählbarer Routenname für GPX- und Feedback-Export.
@@ -122,6 +124,23 @@ Feedback-Modus erzeugten `*__feedback.json`-Dateien in `gpx-samples/`:
 make analyze
 ```
 
+Mit laufendem lokalem ORS werden Referenzen einmalig weggenau auf dessen
+Graphkanten gemappt:
+
+```sh
+make match-references
+make enrich-references
+```
+
+Das Matching muss nach jedem ORS-Graphwechsel erneut laufen. Das Artefakt
+enthält den Graph-Zeitstempel; Kandidaten verwenden den exakten Kantenvergleich
+nur bei demselben Graphstand und fallen sonst auf den geometrischen Vergleich
+zurück. Zwei vorhandene Trentino-Routen liegen außerhalb des aktuellen
+Baden-Württemberg-Graphs und bleiben deshalb geometrisch bewertet.
+Die Anreicherung rekonstruiert jede abgedeckte GPX mit höchstens 50
+Stützpunkten und übernimmt Oberfläche, Straßenklasse und Höhenprofil nur ab
+70 % geometrischer Übereinstimmung mit dem Originaltrack.
+
 Das reproduzierbare Ergebnis liegt in `data/reference-analysis.json`. Gute
 Routen bilden bevorzugte Korridore, markierte schlechte Passagen bilden zu
 meidende Korridore. Beim Erzeugen neuer Runden fließt dieses Modell als
@@ -131,6 +150,25 @@ zusätzlicher, erklärbarer Faktor in das Kandidatenranking ein:
 - Übereinstimmung mit schlechtem Feedback erhält eine deutlich stärkere Strafe;
 - Distanz, Höhenmeter und Himmelsrichtung bleiben eigenständige Ziele.
 
+Optionale `.gpx.meta.json`-Dateien ergänzen Region, Saison, Fahrradtyp,
+Bewertung, Notizen und Klassen. Bewertungen gewichten gute Korridore;
+als Gegenbeispiel markierte Tracks werden als negative Referenz ausgewertet.
+Das Modell enthält außerdem robuste Distanz-/Höhenmeter-Zielbereiche und eine
+Übersicht der vorhandenen Regionen, Jahreszeiten und Fahrradtypen.
+
+Die guten Referenzrouten definieren zusätzlich den Rahmen für den Touraufbau:
+Höhenmeter je 10 km, Doppelbefahrung, enge Richtungswechsel, Kehrtwenden,
+Schließungslücke, erster Anstieg sowie gleichmäßige und steile Anstiege. Das
+20.–80.-Perzentil liefert die robusten Grenzen. Bei Doppelbefahrung,
+Kehrtwenden, steilen Anstiegen, Wechseln und Hauptstraße gilt nur die obere
+Grenze; weniger bleibt ausdrücklich gut. Beim Gravelanteil gilt nur die untere
+Grenze. Echte Bandbreiten gelten für Höhenmeterdichte und Anstiegslage.
+Abweichungen erhöhen den Kandidatenscore nachvollziehbar, bleiben aber weiche
+Hinweise. Oberfläche, Hauptstraße und Gravelanteil stammen aus den
+15 ausreichend tracktreu auf dem lokalen ORS rekonstruierten Referenzen. Eine
+Leave-one-out-Auswertung prüft jede gute Route gegen einen Rahmen, der ohne
+genau diese Route berechnet wurde.
+
 „Unnötige Abkürzung“ und „zu viel Zig-Zag“ stehen als eigene
 Feedbackkategorien bereit. Unabhängig vom Feedback bewertet das Ranking den
 Fahrfluss jeder Route: starke Richtungswechsel, Kehrtwenden und mehrfach
@@ -138,13 +176,25 @@ befahrene Passagen erhalten eine Strafe, flüssige Linien werden bevorzugt.
 Die eingestellte Maximalsteigung hat Vorrang vor der Maximaldistanz: Die Suche
 wird bei Bedarf bis 150 % der gewünschten Obergrenze erweitert und bevorzugt
 immer die längere, weniger steile Variante.
-Automatisch erzeugte ORS-Formpunkte bleiben intern; auf der Karte sind nur der
-Startpunkt und die vom Nutzer gesetzten gelben Highlights sichtbar.
+Automatisch erzeugte ORS-Formpunkte bleiben intern. Bei einem GPX-Import zeigt
+die Karte dagegen die rekonstruierten blauen Formpunkte zum Bearbeiten sowie
+gelbe Pflicht-Highlights.
 Die Route zeigt Bodenarten abschnittsweise per Farbe und Tooltip sowie
 Richtungspfeile. Steigungen über dem Grenzwert erscheinen hellorange, ausgeschlossene
 Wiese-/Erde-Passagen braun und kombinierte Verstöße violett. Der permanente
 Scrubber im unteren Overlay koppelt Kartenposition, Distanz, aktuelle Höhe und
 eine gelbe Positionsmarke im Höhenprofil; markiertes Feedback erscheint gelb.
+
+Der Routenreport nennt bekannte und unbekannte Oberflächen, Wechsel pro 10 km,
+Hauptstraßen, Doppelbefahrung sowie erkannte Anstiege. Der erste Anstieg mit
+mehr als 20 Höhenmetern kann nach 5–10 km bevorzugt oder als Pflicht behandelt
+werden. Die drei Vorschläge zeigen ihre wichtigsten Teilwerte und werden auf
+unterschiedliche Geometrien gefiltert.
+
+Feedback ist standardmäßig eine Rankingstrafe entlang der markierten Geometrie.
+Nur wenn „Passage künftig sperren“ ausdrücklich gewählt wurde, erzeugt eine
+neue Feedbackdatei einen schmalen Vermeidungskorridor. Älteres Feedback und
+Hinweise wie Zig-Zag bleiben Rankingfaktoren und sperren keine Nachbarwege.
 
 Ein Feedback-Export wird nach `gpx-samples/` kopiert und anschließend
 `make analyze` ausgeführt. Beim nächsten Laden der App nutzt sie das

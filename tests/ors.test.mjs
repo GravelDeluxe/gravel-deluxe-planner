@@ -8,6 +8,8 @@ import {
   fetchRoundTripWithRetry,
   fetchRouteThroughWaypoints,
   snapWaypoints,
+  buildMatchBody,
+  matchRoutes,
 } from '../js/ors.js';
 
 const okGeojson = {
@@ -17,7 +19,10 @@ const okGeojson = {
       properties: {
         summary: { distance: 41234.5 },
         ascent: 512.3,
-        extras: { surface: { values: [[0, 1, 12], [1, 2, 1]] } },
+        extras: {
+          surface: { values: [[0, 1, 12], [1, 2, 1]] },
+          waytype: { values: [[0, 1, 1], [1, 2, 5]] },
+        },
       },
     },
   ],
@@ -36,7 +41,7 @@ test('buildRoundTripBody: single [lon, lat] coordinate + round_trip options', ()
   );
   assert.equal(body.elevation, true);
   assert.equal(body.instructions, false);
-  assert.deepEqual(body.extra_info, ['surface']);
+  assert.deepEqual(body.extra_info, ['surface', 'waytype']);
 });
 
 test('buildRoundTripBody: rounds fractional length to whole meters', () => {
@@ -69,7 +74,7 @@ test('buildWaypointRouteBody: converts highlights from lat/lon to ORS lon/lat', 
   assert.deepEqual(body.coordinates, [[9.1, 49.1], [9.2, 49.2], [9.1, 49.1]]);
   assert.equal(body.preference, 'recommended');
   assert.equal(body.custom_model.distance_influence, 50);
-  assert.deepEqual(body.extra_info, ['surface']);
+  assert.deepEqual(body.extra_info, ['surface', 'waytype']);
 });
 
 test('parseRoundTrip: coords swapped to [lat, lon], distance from summary', () => {
@@ -77,6 +82,7 @@ test('parseRoundTrip: coords swapped to [lat, lon], distance from summary', () =
   assert.deepEqual([r.coords[0][0], r.coords[0][1]], [50.1, 8.6]);
   assert.equal(r.distanceM, 41234.5);
   assert.deepEqual(r.surfaceSegments, [[0, 1, 12], [1, 2, 1]]);
+  assert.deepEqual(r.waytypeSegments, [[0, 1, 1], [1, 2, 5]]);
 });
 
 test('parseRoundTrip: ascent computed from smoothed coords, not the noisy props.ascent', () => {
@@ -241,4 +247,25 @@ test('snapWaypoints: reports a form point without a nearby routable edge', async
     ),
     /Formpunkt 2/,
   );
+});
+
+test('buildMatchBody converts route lines to GeoJSON lon/lat', () => {
+  const body = buildMatchBody([[[49.1, 9.2], [49.2, 9.3]]]);
+  assert.deepEqual(
+    body.features.features[0].geometry.coordinates,
+    [[9.2, 49.1], [9.3, 49.2]],
+  );
+});
+
+test('matchRoutes returns edge ids with the graph timestamp', async () => {
+  let request;
+  const result = await matchRoutes([[[49.1, 9.2], [49.2, 9.3]]], {
+    requiresKey: false,
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return { ok: true, json: async () => ({ edge_ids: [[10, 11]], graph_timestamp: 'graph-1' }) };
+    },
+  });
+  assert.match(request.url, /\/v2\/match\/gravel-deluxe$/);
+  assert.deepEqual(result, { edgeIds: [[10, 11]], graphTimestamp: 'graph-1' });
 });

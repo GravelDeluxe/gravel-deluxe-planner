@@ -11,12 +11,14 @@ export function buildRouteUrl(waypoints, profile = DEFAULT_PROFILE) {
 export function parseRouteResponse(geojson) {
   const feature = geojson?.features?.[0];
   if (!feature) throw new Error('Keine Route in der Antwort');
-  const coords = feature.geometry.coordinates.map(([lon, lat, ele]) => [lat, lon, ele ?? 0]);
+  const rawCoords = feature.geometry.coordinates;
+  const coords = rawCoords.map(([lon, lat, ele]) => [lat, lon, ele ?? 0]);
   const props = feature.properties ?? {};
   return {
     coords,
     distanceM: Number(props['track-length'] ?? 0),
     ascendM: Number(props['filtered ascend'] ?? 0),
+    elevationAvailable: rawCoords.every((point) => Number.isFinite(point[2])),
   };
 }
 

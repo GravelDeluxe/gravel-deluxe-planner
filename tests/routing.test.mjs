@@ -42,6 +42,17 @@ test('parseRouteResponse: empty response throws', () => {
   assert.throws(() => parseRouteResponse({ features: [] }), /Keine Route/);
 });
 
+test('parseRouteResponse reports whether elevation data is present', () => {
+  const withElevation = parseRouteResponse({ features: [{
+    geometry: { coordinates: [[9, 49, 100], [9.01, 49, 110]] }, properties: {},
+  }] });
+  const withoutElevation = parseRouteResponse({ features: [{
+    geometry: { coordinates: [[9, 49], [9.01, 49]] }, properties: {},
+  }] });
+  assert.equal(withElevation.elevationAvailable, true);
+  assert.equal(withoutElevation.elevationAvailable, false);
+});
+
 test('fetchRouteWithFallback: gravel success keeps profile gravel', async () => {
   const fetchImpl = async () => ({ ok: true, json: async () => okGeojson });
   const r = await fetchRouteWithFallback([[50.1, 8.6], [50.2, 8.7]], { fetchImpl });

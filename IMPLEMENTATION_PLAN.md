@@ -25,8 +25,8 @@ bleiben unten als fachliche Spezifikation erhalten; sie sind keine Aussage
 | --- | --- | --- |
 | Routing | BRouter, ORS, native und gerichtete Runden, Highlights, drei Vorschläge | systematischer Qualitätsnachweis, DACH-Abdeckung |
 | Ranking | Distanz, Höhenmeter, Richtung, Steigung, Wiese/Erde, Referenzkorridore, Fahrfluss | Oberflächenkontinuität, Hauptstraßenanteil, kontextabhängige Parallelwege, Anstiegsqualität, erster Anstieg |
-| Referenzen | 18 GPX-Dateien, 17 eindeutige Routen, 4 Feedbackdateien mit 14 Passagen | Map-Matching, Referenzbericht mit gleichen Kennzahlen wie Routenscore, administrativer Import |
-| App | Karte, Oberflächenabschnitte, Höhenprofil, Scrubber, Feedback, lokale Speicherung, GPX-Export | erklärbare Teil-Scores, vollständige Oberflächenlegende, visuelle Desktop-/Mobilabnahme |
+| Referenzen | 18 GPX-Dateien, 17 eindeutige Routen, 4 Feedbackdateien mit 14 Passagen, optionale Metadaten und Gegenbeispiele | Map-Matching, Referenzbericht mit gleichen Kennzahlen wie Routenscore, administrativer Import |
+| App | Karte, Qualitätsreport, Feedback, lokale Speicherung, GPX-Export sowie editierbarer GPX-/Feedbackimport | visuelle Desktop-/Mobilabnahme und Kalibrierung der neuen Kennzahlen |
 | Betrieb | lokaler Docker-Stack, Smoke-Tests, GitLab-CI, Portainer-Vorlage | bestätigter GitHub→GitLab-Veröffentlichungsweg, Zielserverabnahme, Datenupdates und Monitoring |
 
 Am 10.09.2026 bestanden die realen BRouter-/ORS-Smoke-Tests. ORS lieferte
@@ -89,18 +89,20 @@ brauchen sowohl Messwerte als auch Kartenprüfung.
 
 Abhängig von M2; Gewichte erst nach Vergleichsmessungen ändern.
 
-- [ ] Negatives Feedback nach Bedeutung behandeln: kontextabhängige
+- [x] Negatives Feedback nach Bedeutung behandeln: kontextabhängige
   Abstecher-/Zig-Zag-Kritik als Rankingfaktor; echte zu meidende Passagen
   gesondert kennzeichnen. Nicht jede negative Rasterzelle pauschal sperren.
-- [ ] Korridore auf das Suchgebiet begrenzen; nahe Parallelwege getrennt
-  behandeln. Qualitäts- und Vertrauensangaben im Referenzmodell führen.
-- [ ] Routenreport mit Oberflächen-km/%, Datenlücken, Wechseln pro 10 km,
+- [x] Feedbackkorridore auf das Suchgebiet begrenzen, nahe Parallelwege durch
+  Geometrienähe trennen und Qualitäts-/Vertrauensangaben führen.
+- [ ] Positive Referenzkorridore ebenfalls weggenau statt im groben Raster
+  bewerten; dafür ist das OSM-Map-Matching aus M5 erforderlich.
+- [x] Routenreport mit Oberflächen-km/%, Datenlücken, Wechseln pro 10 km,
   Hauptstraßenanteil, Doppelbefahrung und erklärbaren Teil-Scores ergänzen.
-- [ ] Lange moderate Anstiege (4–8 %), steile Rampen und Abfahrten separat
+- [x] Lange moderate Anstiege (4–8 %), steile Rampen und Abfahrten separat
   bewerten; ersten Anstieg >20 hm und den Zielbereich 5–10 km ausweisen.
-- [ ] Erster Anstieg: Aus / Präferenz / Pflicht samt nachvollziehbarer
+- [x] Erster Anstieg: Aus / Präferenz / Pflicht samt nachvollziehbarer
   Meldung bei ungeeignetem Gelände implementieren.
-- [ ] Ähnliche Kandidaten erkennen, damit drei Vorschläge echte Alternativen
+- [x] Ähnliche Kandidaten erkennen, damit drei Vorschläge echte Alternativen
   darstellen. Karte mit vollständiger Oberflächenlegende und Datenunsicherheit.
 
 Abnahme: Nutzer verstehen, warum eine Route vor einer anderen liegt.
@@ -132,12 +134,21 @@ Ausfall, Neustart, Datenwechsel und Rollback sind praktisch geprüft.
 
 Abhängig von M2/M3; keine vorgezogene ML-Implementierung.
 
-- [ ] GPX auf OSM-Wege mappen und mit den gleichen Qualitätskennzahlen wie
-  Kandidaten analysieren. Region, Saison, Fahrradtyp, Bewertung, Notizen,
-  Distanz-/Höhenmeterklasse sowie Gegenbeispiele unterstützen.
-- [ ] Regelbasierte Zielbereiche und Gewichtungen aus 20–50 vielfältigen
-  bewerteten Referenzrouten ableiten und gegen zurückgehaltene Routen prüfen.
-- [ ] Einzelne GPX-/Feedbackroute als editierbare Planung laden: Start, Ende,
+- [x] GPX auf Kanten des selbst gehosteten ORS-/OSM-Graphen mappen und den
+  positiven Referenzvergleich bei identischem Graphstand weggenau ausführen.
+- [x] Die 15 vom aktuellen Graph abgedeckten GPX tracktreu rekonstruieren und
+  mit allen Oberflächen-, Straßen- und Anstiegskennzahlen des Kandidatenreports
+  analysieren; Ergebnisse unter 70 % Tracktreue verwerfen.
+- [x] Geometrie-, Fahrfluss- und Höhenkennzahlen der guten GPX mit derselben
+  Auswertung wie Kandidaten bestimmen und daraus robuste Rahmen ableiten.
+- [x] Region, Saison, Fahrradtyp, Bewertung, Notizen,
+  Distanz-/Höhenmeterklasse sowie Gegenbeispiele über optionale
+  `.gpx.meta.json`-Dateien unterstützen.
+- [x] Regelbasierte Zielbereiche und Gewichtungen aus den aktuell 17
+  eindeutigen guten Referenzrouten ableiten und per Leave-one-out prüfen.
+- [ ] Sammlung auf 20–50 vielfältige Routen erweitern und gegen eine separate,
+  bei der Ableitung nicht verwendete Testsammlung prüfen.
+- [x] Einzelne GPX-/Feedbackroute als editierbare Planung laden: Start, Ende,
   Highlights und geeignete Stützpunkte rekonstruieren; Highlights erhalten.
 - [ ] Verständliche Presets für Gravel-Fokus, Komfort/Technik, Anstiege und
   Rundkurspräferenz ergänzen; Expertengewichtungen erklärbar halten.
@@ -325,17 +336,13 @@ Das Profil bietet einfache Regler statt technischer Profilparameter:
 - Rundkurs: möglichst abwechslungsreich / neutral;
 - Distanz und Höhenmeterziel.
 
-### Vorgemerkt: Route mit editierbaren Wegpunkten laden
+### Route mit editierbaren Wegpunkten laden
 
-Eine vorhandene GPX- oder Feedbackroute soll später als editierbare Planung
-geladen werden. Aus der Geometrie werden Start, Ende, vorhandene Highlights und
+Eine vorhandene GPX- oder Feedbackroute wird als editierbare Planung
+geladen. Aus der Geometrie werden Start, Ende, vorhandene Highlights und
 geeignete Stützpunkte rekonstruiert. Nutzer können diese Wegpunkte verschieben,
 ergänzen oder löschen; anschließend erzeugt und bewertet der GravelDeluxe-
 Algorithmus optimierte Varianten, ohne zwingende Highlights zu verlieren.
-
-Diese Funktion ist bewusst noch nicht Teil des aktuellen GPX-Analyseimports:
-Der Import dient derzeit dem Referenzmodell, nicht der interaktiven
-Neuoptimierung einer einzelnen Route.
 
 Die erweiterten Gewichtungen bleiben als Experteneinstellungen verfügbar, werden aber mit verständlichen Beschreibungen versehen.
 

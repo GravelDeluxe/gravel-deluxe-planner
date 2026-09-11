@@ -8,6 +8,8 @@ export function reverseRoute(route) {
     ...route,
     coords,
     ascendM: Math.round(elevationGain(coords)),
+    ...(route.waytypeSegments ? { waytypeSegments: route.waytypeSegments
+      .map(([from, to, type]) => [last - to, last - from, type]).reverse() } : {}),
     surfaceSegments: (route.surfaceSegments ?? [])
       .map(([from, to, surface]) => [last - to, last - from, surface])
       .reverse(),
@@ -16,7 +18,7 @@ export function reverseRoute(route) {
 
 export const DEFAULT_SETTINGS = Object.freeze({
   minKm: 30, maxKm: 50, minHm: 200, maxHm: 800,
-  direction: 'any', allowMeadowEarth: true, maxSlopePercent: 10,
+  direction: 'any', firstClimbMode: 'off', allowMeadowEarth: true, maxSlopePercent: 10,
 });
 
 export function restoreSavedRoute(saved) {
@@ -25,6 +27,8 @@ export function restoreSavedRoute(saved) {
     routingProfile: saved.routingProfile ?? 'gravel-konstant',
     waypoints: saved.waypoints ?? [],
     highlights: saved.highlights ?? [],
+    shapePoints: saved.shapePoints ?? [],
+    importedTrack: saved.importedTrack ?? null,
     settings: { ...DEFAULT_SETTINGS, ...saved.settings },
     route: {
       coords: saved.coords,
@@ -33,6 +37,8 @@ export function restoreSavedRoute(saved) {
       // Bei alten Einträgen lässt sich der tatsächliche Router nicht rekonstruieren.
       profile: saved.profile ?? null,
       surfaceSegments: saved.surfaceSegments ?? [],
+      ...(saved.waytypeSegments ? { waytypeSegments: saved.waytypeSegments } : {}),
+      ...(saved.elevationAvailable !== undefined ? { elevationAvailable: saved.elevationAvailable } : {}),
     },
   };
 }

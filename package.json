@@ -13,6 +13,8 @@
   },
   "scripts": {
     "analyze": "node scripts/analyze-references.mjs",
+    "match-references": "node scripts/match-references.mjs",
+    "enrich-references": "node scripts/enrich-references.mjs",
     "test": "node --test 'tests/**/*.test.mjs'",
     "serve": "python3 serve.py 8123"
   }

@@ -1,12 +1,11 @@
 import { TILE_URL, TILE_ATTRIBUTION, MAP_START, MAP_START_ZOOM } from './config.js';
 import { fetchRouteWithFallback } from './routing.js';
 import { profilePoints, svgPath } from './elevation.js';
-import {
-  feedbackAvoidPolygons,
-} from './reference-analysis.js';
+import { feedbackAvoidPolygons, scopeReferenceModel } from './reference-analysis.js';
 import {
   fetchRoundTripWithRetry,
   fetchRouteThroughWaypoints,
+  matchRoutes,
   snapWaypoints,
 } from './ors.js';
 import { DIRECTION_BEARINGS, rankRoundTripCandidates } from './candidates.js';
@@ -25,50 +24,16 @@ import {
   feedbackFilename,
 } from './feedback.js';
 import { buildRouteDisplaySegments, directionArrowPoints } from './route-display.js';
+import { analyzeRouteQuality } from './route-quality.js';
+import { createReliableTileLayer } from './tiles.js';
+import { parseImportedFile } from './route-import.js';
 
 const map = L.map('map', { zoomControl: false }).setView(MAP_START, MAP_START_ZOOM);
-const tileLayer = L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
+const tileLayer = createReliableTileLayer(L, TILE_URL, {
+  attribution: TILE_ATTRIBUTION,
+  maxZoom: 19,
+}).addTo(map);
 L.control.zoom({ position: 'topright' }).addTo(map);
-
-// CyclOSM (Community-Server) liefert nach großen Sprüngen unzuverlässig: Kacheln
-// droppen (429/Timeout) ODER bleiben ohne Fehler-Event hängen. Leaflet lässt sie
-// dann grau — bis zur nächsten Interaktion. Zwei Mechanismen holen sie nach.
-
-// 1) Fehlerhafte Kachel mit exponentiellem Backoff + Jitter erneut anfordern,
-//    damit die Retries nicht gebündelt wieder auf den gedrosselten Server treffen.
-const TILE_MAX_RETRY = 4;
-tileLayer.on('tileerror', (e) => {
-  const t = e.tile;
-  const tries = Number(t.dataset.retry || 0);
-  if (tries >= TILE_MAX_RETRY) return;
-  t.dataset.retry = tries + 1;
-  const src = t.src;
-  const delay = 500 * 2 ** tries + Math.random() * 300;
-  setTimeout(() => { if (t.parentNode) t.src = src; }, delay);
-});
-
-// Genau die grauen (noch nicht geladenen) Kacheln neu anfordern. Kein redraw():
-// das würde geladene Kacheln verwerfen (Flackern) und laufende Requests abbrechen.
-function nudgeStalledTiles() {
-  const pane = map.getPane('tilePane');
-  const grey = pane ? pane.querySelectorAll('img.leaflet-tile:not(.leaflet-tile-loaded)') : [];
-  grey.forEach((t) => {
-    const src = t.src;
-    if (src) { t.src = ''; t.src = src; }
-  });
-  return grey.length;
-}
-
-// 2) Nach einem programmatischen Sprung (Suche/fitBounds) nachfassen: hängende
-//    Kacheln feuern kein tileerror, darum mit wachsenden Abständen prüfen und
-//    nur die verbliebenen grauen neu ziehen, bis keine mehr übrig sind.
-function refreshTilesSoon() {
-  let pass = 0;
-  const check = () => {
-    if (nudgeStalledTiles() > 0 && ++pass < 4) setTimeout(check, 1200 + pass * 800);
-  };
-  setTimeout(check, 1000);
-}
 const routeLayer = L.polyline([], { color: '#c2410c', weight: 4, opacity: 0 }).addTo(map);
 let routeDisplayLayers = [];
 let routeDirectionMarkers = [];
@@ -98,6 +63,10 @@ const state = {
   highlightMarkers: [],
   highlights: [],
   highlightMode: false,
+  shapePointMarkers: [],
+  shapePoints: [],
+  shapePointMode: false,
+  importedTrack: null,
   busy: false,        // gates nur Map-Klicks; Korrektheit sichert requestSeq
   routingProfile: el('routingProfile').value,
   feedback: {
@@ -121,6 +90,7 @@ function planningSettings() {
     minKm: Number(el('loopKmMin').value), maxKm: Number(el('loopKmMax').value),
     minHm: Number(el('loopHmMin').value), maxHm: Number(el('loopHmMax').value),
     direction: el('loopDirection').value,
+    firstClimbMode: el('firstClimbMode').value,
     allowMeadowEarth: el('allowMeadowEarth').checked,
     maxSlopePercent: Number(el('maxSlopePercent').value),
   };
@@ -257,6 +227,54 @@ function renderStats() {
   `;
 }
 
+function renderRouteReport() {
+  const report = el('routeReport');
+  if (!state.route?.coords?.length) {
+    report.hidden = true;
+    report.innerHTML = '';
+    return;
+  }
+  const quality = analyzeRouteQuality(state.route);
+  const knownSurfaceM = Math.max(0, quality.distanceM - quality.unknownSurfaceM);
+  const surfaceRows = quality.surfaces
+    .map((surface) => `<dt>${escapeXml(surface.name)}</dt><dd>${(surface.distanceM / 1000).toFixed(1)} km · ${surface.percent.toFixed(0)} %</dd>`)
+    .join('');
+  const surfaceBar = quality.surfaces
+    .map((surface) => `<span style="width:${surface.percent.toFixed(2)}%;background:${surface.color}" title="${escapeXml(surface.name)}"></span>`)
+    .join('');
+  const firstClimb = quality.terrain.firstClimbKm;
+  const moderate = quality.terrain.climbs.filter((climb) => climb.moderate).length;
+  const steep = quality.terrain.climbs.filter((climb) => climb.steep).length;
+  const learned = state.route.learning;
+  const learnedRows = (learned?.dimensions ?? [])
+    .filter((dimension) => !dimension.inFrame)
+    .sort((a, b) => b.penalty - a.penalty)
+    .map((dimension) => {
+      const percent = ['repeatedShare', 'closureShare', 'mainRoadShare', 'gravelShare'].includes(dimension.key);
+      const format = (value) => percent ? `${(value * 100).toFixed(1)} %` : value.toFixed(2);
+      const target = dimension.mode === 'max' ? `bis ${format(dimension.high)}`
+        : dimension.mode === 'min' ? `ab ${format(dimension.low)}`
+          : `${format(dimension.low)}–${format(dimension.high)}`;
+      return `<dt>${escapeXml(dimension.label)}</dt><dd>${format(dimension.value)} · Rahmen ${target}</dd>`;
+    }).join('');
+  report.hidden = false;
+  report.innerHTML = `<h2>Routenqualität</h2>
+    <dl>
+      <dt>Bekannte Oberfläche</dt><dd>${(knownSurfaceM / 1000).toFixed(1)} km · ${(knownSurfaceM / (quality.distanceM || 1) * 100).toFixed(0)} %</dd>
+      <dt>Oberflächenwechsel</dt><dd>${quality.surfaceChanges} · ${quality.changesPer10Km.toFixed(1)} / 10 km</dd>
+      <dt>Hauptstraße</dt><dd>${quality.waytypeAvailable ? `${(quality.mainRoadM / 1000).toFixed(1)} km` : 'nicht prüfbar'}</dd>
+      <dt>Weitere Straßenklassen</dt><dd>${quality.waytypeAvailable ? `${(quality.otherRoadM / 1000).toFixed(1)} km` : 'nicht prüfbar'}</dd>
+      <dt>Doppelbefahrung</dt><dd>${(quality.repeated.distanceM / 1000).toFixed(1)} km · ${(quality.repeated.share * 100).toFixed(0)} %</dd>
+      <dt>Erster Anstieg &gt; 20 hm</dt><dd>${!quality.terrain.available ? 'nicht prüfbar' : firstClimb === null ? 'keiner erkannt' : `nach ${firstClimb.toFixed(1)} km`}</dd>
+      <dt>Anstiege</dt><dd>${quality.terrain.available ? `${quality.terrain.climbs.length}, davon ${moderate} gleichmäßig · ${steep} steil` : 'nicht prüfbar'}</dd>
+    </dl>
+    <div class="surface-share">${surfaceBar}</div>
+    <details><summary>Oberflächen</summary><dl>${surfaceRows}</dl></details>
+    ${learned?.available ? `<details><summary>Gelernter Touraufbau · Abweichung ${learned.adjustment.toFixed(2)}</summary>
+      ${learnedRows ? `<dl>${learnedRows}</dl>` : '<p>Alle verfügbaren Aufbauwerte liegen im Rahmen der guten Referenzrouten.</p>'}
+    </details>` : ''}`;
+}
+
 function renderRoute() {
   routeDisplayLayers.forEach((layer) => layer.remove());
   routeDirectionMarkers.forEach((marker) => marker.remove());
@@ -295,6 +313,7 @@ function renderRoute() {
       }).addTo(map));
   }
   renderFeedback();
+  renderRouteReport();
 }
 
 function renderMarkers() {
@@ -325,14 +344,21 @@ function renderMarkers() {
 function renderHighlights() {
   state.highlightMarkers.forEach((marker) => marker.remove());
   state.highlightMarkers = state.highlights.map((point, index) => {
-    const marker = L.circleMarker(point, {
-      radius: 7,
-      color: '#a16207',
-      weight: 3,
-      fillColor: '#facc15',
-      fillOpacity: 0.9,
+    const marker = L.marker(point, {
+      draggable: true,
+      bubblingMouseEvents: false,
+      icon: L.divIcon({
+        className: '', html: '<div class="highlight-map-marker">◆</div>',
+        iconSize: [22, 22], iconAnchor: [11, 11],
+      }),
     }).addTo(map);
     marker.bindTooltip(`Highlight ${index + 1}`);
+    marker.on('dragend', () => {
+      const { lat, lng } = marker.getLatLng();
+      invalidateLoop();
+      state.highlights[index] = [lat, lng];
+      renderHighlights();
+    });
     return marker;
   });
   el('highlights').innerHTML = state.highlights
@@ -342,6 +368,34 @@ function renderHighlights() {
         <button type="button" data-i="${index}" aria-label="Highlight entfernen">×</button>
       </div>`,
     )
+    .join('');
+}
+
+function renderShapePoints() {
+  state.shapePointMarkers.forEach((marker) => marker.remove());
+  state.shapePointMarkers = state.shapePoints.map((point, index) => {
+    const marker = L.marker(point, {
+      draggable: true,
+      bubblingMouseEvents: false,
+      icon: L.divIcon({
+        className: '', html: `<div class="shape-map-marker">${index + 1}</div>`,
+        iconSize: [22, 22], iconAnchor: [11, 11],
+      }),
+    }).addTo(map);
+    marker.bindTooltip(`Formpunkt ${index + 1}`);
+    marker.on('dragend', () => {
+      const { lat, lng } = marker.getLatLng();
+      invalidateLoop();
+      state.shapePoints[index] = [lat, lng];
+      renderShapePoints();
+    });
+    return marker;
+  });
+  el('shapePoints').innerHTML = state.shapePoints
+    .map((point, index) => `<div class="highlight-row">
+      <span>■ Formpunkt ${index + 1} · ${point[0].toFixed(4)}, ${point[1].toFixed(4)}</span>
+      <button type="button" data-i="${index}" aria-label="Formpunkt entfernen">×</button>
+    </div>`)
     .join('');
 }
 
@@ -390,15 +444,75 @@ function clearAll() {
   state.candidates = [];
   state.highlights = [];
   state.highlightMode = false;
+  state.shapePoints = [];
+  state.shapePointMode = false;
+  state.importedTrack = null;
   el('addHighlight').classList.remove('active');
   el('addHighlight').textContent = 'Highlight auf Karte setzen';
+  el('addShapePoint').classList.remove('active');
+  el('addShapePoint').textContent = 'Formpunkt auf Karte setzen';
   resetFeedback();
   renderMarkers();
   renderHighlights();
+  renderShapePoints();
   renderRoute();
   el('suggestions').innerHTML = '';
   setStatus('');
 }
+
+function loadImportedPlan(plan) {
+  requestSeq++;
+  state.busy = false;
+  resetFeedback();
+  clearCandidates();
+  state.mode = plan.mode;
+  state.waypoints = plan.waypoints.map((point) => [...point]);
+  state.shapePoints = plan.shapePoints.map((point) => [...point]);
+  state.highlights = plan.highlights.map((point) => [...point.coords]);
+  state.route = plan.route;
+  state.importedTrack = plan.route.coords.map((point) => [...point]);
+  state.highlightMode = false;
+  state.shapePointMode = false;
+  el('routeName').value = plan.name.slice(0, 100);
+  if (plan.mode === 'loop') {
+    const km = plan.route.distanceM / 1000;
+    const hm = plan.route.ascendM;
+    el('loopKmMin').value = Math.max(5, Math.floor(km * 0.9));
+    el('loopKmMax').value = Math.min(300, Math.max(6, Math.ceil(km * 1.1)));
+    el('loopHmMin').value = Math.max(0, Math.floor(hm * 0.8 / 50) * 50);
+    el('loopHmMax').value = Math.min(10000, Math.max(50, Math.ceil(hm * 1.2 / 50) * 50));
+  }
+  el('addHighlight').classList.remove('active');
+  el('addShapePoint').classList.remove('active');
+  el('addHighlight').textContent = state.highlights.length
+    ? 'Weiteres Highlight setzen' : 'Highlight auf Karte setzen';
+  el('addShapePoint').textContent = state.shapePoints.length
+    ? 'Weiteren Formpunkt setzen' : 'Formpunkt auf Karte setzen';
+  updateModeControls();
+  renderMarkers();
+  renderHighlights();
+  renderShapePoints();
+  renderRoute();
+  map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+  setStatus(
+    plan.mode === 'loop'
+      ? `GPX als Runde mit ${state.shapePoints.length} Formpunkten und ${state.highlights.length} Highlights geladen.`
+      : `GPX als offene Planung mit ${state.waypoints.length} editierbaren Punkten geladen.`,
+  );
+}
+
+el('routeImportButton').addEventListener('click', () => el('routeImportFile').click());
+el('routeImportFile').addEventListener('change', async () => {
+  const file = el('routeImportFile').files?.[0];
+  if (!file) return;
+  try {
+    loadImportedPlan(parseImportedFile(await file.text(), file.name));
+  } catch (err) {
+    setStatus(`Import fehlgeschlagen: ${err.message}`);
+  } finally {
+    el('routeImportFile').value = '';
+  }
+});
 
 map.on('click', (e) => {
   if (state.busy || state.feedback.active) return;
@@ -410,6 +524,16 @@ map.on('click', (e) => {
     el('addHighlight').textContent = 'Weiteres Highlight setzen';
     renderHighlights();
     setStatus(`Highlight ${state.highlights.length} gesetzt.`);
+    return;
+  }
+  if (state.shapePointMode && state.mode === 'loop') {
+    invalidateLoop();
+    state.shapePoints.push([e.latlng.lat, e.latlng.lng]);
+    state.shapePointMode = false;
+    el('addShapePoint').classList.remove('active');
+    el('addShapePoint').textContent = 'Weiteren Formpunkt setzen';
+    renderShapePoints();
+    setStatus(`Formpunkt ${state.shapePoints.length} gesetzt.`);
     return;
   }
   if (state.mode === 'loop') {
@@ -426,11 +550,22 @@ el('undoButton').addEventListener('click', () => {
 });
 el('clearButton').addEventListener('click', clearAll);
 el('addHighlight').addEventListener('click', () => {
+  state.shapePointMode = false;
+  el('addShapePoint').classList.remove('active');
   state.highlightMode = !state.highlightMode;
   el('addHighlight').classList.toggle('active', state.highlightMode);
   el('addHighlight').textContent = state.highlightMode
     ? 'Jetzt Highlight auf Karte anklicken …'
     : state.highlights.length ? 'Weiteres Highlight setzen' : 'Highlight auf Karte setzen';
+});
+el('addShapePoint').addEventListener('click', () => {
+  state.highlightMode = false;
+  el('addHighlight').classList.remove('active');
+  state.shapePointMode = !state.shapePointMode;
+  el('addShapePoint').classList.toggle('active', state.shapePointMode);
+  el('addShapePoint').textContent = state.shapePointMode
+    ? 'Jetzt Formpunkt auf Karte anklicken …'
+    : state.shapePoints.length ? 'Weiteren Formpunkt setzen' : 'Formpunkt auf Karte setzen';
 });
 el('highlights').addEventListener('click', (event) => {
   const button = event.target.closest('button[data-i]');
@@ -438,6 +573,13 @@ el('highlights').addEventListener('click', (event) => {
   invalidateLoop();
   state.highlights.splice(Number(button.dataset.i), 1);
   renderHighlights();
+});
+el('shapePoints').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-i]');
+  if (!button) return;
+  invalidateLoop();
+  state.shapePoints.splice(Number(button.dataset.i), 1);
+  renderShapePoints();
 });
 
 document.querySelectorAll('input[name="mode"]').forEach((radio) =>
@@ -464,7 +606,7 @@ el('routingProfile').addEventListener('change', () => {
 for (const id of ['loopKmMin', 'loopKmMax', 'loopHmMin', 'loopHmMax', 'maxSlopePercent']) {
   el(id).addEventListener('input', invalidateLoop);
 }
-for (const id of ['allowMeadowEarth', 'loopDirection']) {
+for (const id of ['allowMeadowEarth', 'loopDirection', 'firstClimbMode']) {
   el(id).addEventListener('change', invalidateLoop);
 }
 
@@ -472,7 +614,10 @@ function renderSuggestions(activeIndex = -1) {
   el('suggestions').innerHTML = state.candidates
     .map(
       (c, i) => `<button type="button" class="suggestion${i === activeIndex ? ' active' : ''}" data-i="${i}">
-        ${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm${c.reference?.goodAffinity ? ` · Referenz ${Math.round(c.reference.goodAffinity * 100)} %` : ''}${c.reference?.badCoverage ? ` · ⚠ ${Math.round(c.reference.badCoverage * 100)} % Feedback` : ''}${c.flow?.reversals || c.flow?.repeatedShare > 0.02 ? ' · ⚠ Fahrfluss' : ''}${c.constraints?.surfaceStatus === 'unknown' && !el('allowMeadowEarth').checked ? ' · ⚠ Oberfläche nicht prüfbar' : ''}${c.inRange ? '' : ` (außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm', !c.constraints?.surfaceAllowed && (c.constraints?.surfaceStatus === 'unknown' ? 'Oberfläche unbekannt' : 'Wiese/Erde'), !c.constraints?.slopeAllowed && `Steigung ${c.constraints.maximumGrade.toFixed(1)} %`].filter(Boolean).join(' + ')})`}
+        <strong>${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm</strong>
+        <small>Oberfläche ${((c.quality.distanceM - c.quality.unknownSurfaceM) / (c.quality.distanceM || 1) * 100).toFixed(0)} % bekannt · ${c.quality.surfaceChanges} Wechsel · ${(c.quality.repeated.share * 100).toFixed(0)} % doppelt</small>
+        <small>Referenzwege ${Math.round(c.reference.goodAffinity * 100)} % · Aufbau ${c.learnedStructure.adjustment.toFixed(2)} · Feedback ${(c.reference.badCoverage * 100).toFixed(1)} % · Score ${c.score.toFixed(2)}</small>
+        ${c.inRange ? '' : `<small class="warning">Außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm', !c.constraints?.surfaceAllowed && (c.constraints?.surfaceStatus === 'unknown' ? 'Oberfläche unbekannt' : 'Wiese/Erde'), !c.constraints?.slopeAllowed && `Steigung ${c.constraints.maximumGrade.toFixed(1)} %`, !c.firstClimb?.allowed && 'erster Anstieg'].filter(Boolean).join(' + ')}</small>`}
       </button>`,
     )
     .join('');
@@ -485,17 +630,18 @@ function selectCandidate(i) {
   state.busy = false;
   resetFeedback();
   state.route = c.route;
+  state.route.learning = c.learnedStructure;
   state.waypoints = [...c.waypoints];
   renderMarkers();
   renderRoute();
   renderSuggestions(i);
   map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
-  refreshTilesSoon();
   const misses = [
     !c.distanceInRange && `${(c.route.distanceM / 1000).toFixed(1)} km`,
     !c.ascentInRange && `${Math.round(c.route.ascendM)} hm`,
     !c.constraints?.surfaceAllowed && (c.constraints?.surfaceStatus === 'unknown' ? 'Oberfläche nicht vollständig prüfbar' : `${(c.constraints.meadowEarthM / 1000).toFixed(1)} km Wiese/Erde`),
     !c.constraints?.slopeAllowed && `${c.constraints.maximumGrade.toFixed(1)} % maximale Steigung`,
+    !c.firstClimb?.allowed && 'erster Anstieg nicht nach 5–10 km',
   ].filter(Boolean);
   setStatus(c.inRange ? '' : `Beste verfügbare Runde außerhalb des Zielbereichs: ${misses.join(', ')}.`);
 }
@@ -534,6 +680,8 @@ el('feedbackOut').addEventListener('click', () => {
       {
         problem: el('feedbackProblem').value,
         note: el('feedbackNote').value,
+        effect: el('feedbackEffect').value,
+        confidence: 'observed',
       },
     );
     state.feedback.passages.push(passage);
@@ -567,6 +715,7 @@ el('feedbackExport').addEventListener('click', () => {
       max: Number(el('loopHmMax').value),
     },
     requestedDirection: el('loopDirection').value,
+    firstClimbMode: el('firstClimbMode').value,
     allowMeadowEarth: el('allowMeadowEarth').checked,
     maxSlopePercent: Number(el('maxSlopePercent').value),
     highlights: state.highlights.map((point) => point.slice(0, 2)),
@@ -588,12 +737,13 @@ async function roundTripCandidates(
   minHm,
   maxHm,
   direction,
-  { customModel, highlights, allowMeadowEarth, maxSlopePercent },
+  { customModel, highlights, shapePoints, templateCoords, allowMeadowEarth, maxSlopePercent, firstClimbMode },
 ) {
-  const referenceModel = await referenceModelPromise;
+  const fullReferenceModel = await referenceModelPromise;
+  const referenceModel = scopeReferenceModel(fullReferenceModel, start, maxKm * 1000);
   const avoidPolygons = feedbackAvoidPolygons(
     referenceModel,
-    [start, ...highlights],
+    [start, ...highlights, ...shapePoints],
   );
   const routeThroughSnappedWaypoints = async (waypoints) => {
     const snapped = await snapWaypoints(waypoints, { radiusM: 2500 });
@@ -609,7 +759,7 @@ async function roundTripCandidates(
   ];
   const lengthsKm = [...baseLengths, ...baseLengths];
   let firstError;
-  const guidedShape = direction !== 'any' || highlights.length > 0;
+  const guidedShape = direction !== 'any' || highlights.length > 0 || shapePoints.length > 0;
   const results = guidedShape ? [] : await Promise.all(
     lengthsKm.map(async (km) => {
       try {
@@ -618,8 +768,11 @@ async function roundTripCandidates(
           customModel,
           avoidPolygons,
         });
-        if (highlights.length) {
-          const viaPoints = buildHighlightWaypoints(start, route.coords, highlights);
+        if (highlights.length || shapePoints.length) {
+          const viaPoints = buildHighlightWaypoints(
+            start, templateCoords?.length ? templateCoords : route.coords,
+            [...shapePoints, ...highlights], 0,
+          );
           route = await routeThroughSnappedWaypoints(viaPoints);
         }
         const snappedStart = route.coords.length
@@ -655,8 +808,11 @@ async function roundTripCandidates(
       valid = await Promise.all(
         guided.map(async (candidate) => {
           let route = candidate.route;
-          if (highlights.length) {
-            const viaPoints = buildHighlightWaypoints(start, route.coords, highlights);
+          if (highlights.length || shapePoints.length) {
+            const viaPoints = buildHighlightWaypoints(
+              start, templateCoords?.length ? templateCoords : route.coords,
+              [...shapePoints, ...highlights], 0,
+            );
             route = await routeThroughSnappedWaypoints(viaPoints);
           }
           return {
@@ -696,8 +852,11 @@ async function roundTripCandidates(
       valid = await Promise.all(
         fallback.map(async (candidate) => {
           let route = candidate.route;
-          if (highlights.length) {
-            const viaPoints = buildHighlightWaypoints(start, route.coords, highlights);
+          if (highlights.length || shapePoints.length) {
+            const viaPoints = buildHighlightWaypoints(
+              start, templateCoords?.length ? templateCoords : route.coords,
+              [...shapePoints, ...highlights], 0,
+            );
             route = await routeThroughSnappedWaypoints(viaPoints);
           }
           return {
@@ -713,6 +872,16 @@ async function roundTripCandidates(
       );
     }
   }
+  try {
+    const matched = await matchRoutes(valid.map((candidate) => candidate.route.coords));
+    valid.forEach((candidate, index) => {
+      candidate.route.edgeIds = matched.edgeIds[index];
+      candidate.route.matchingGraphTimestamp = matched.graphTimestamp;
+    });
+  } catch {
+    // Öffentliche ORS-Instanzen bieten Matching nicht an. Das Ranking fällt
+    // dann kontrolliert auf den geometrischen Referenzvergleich zurück.
+  }
   return rankRoundTripCandidates(
     valid,
     {
@@ -725,6 +894,7 @@ async function roundTripCandidates(
       referenceModel,
       allowMeadowEarth,
       maxSlopePercent,
+      firstClimbMode,
     },
   );
 }
@@ -739,6 +909,7 @@ el('generateLoop').addEventListener('click', async () => {
   const direction = el('loopDirection').value;
   const maxSlopePercent = Number(el('maxSlopePercent').value);
   const allowMeadowEarth = el('allowMeadowEarth').checked;
+  const firstClimbMode = el('firstClimbMode').value;
   if (!start) return setStatus('Zuerst Startpunkt auf die Karte klicken.');
   if (!(minKm >= 5 && maxKm <= 300 && minKm < maxKm)) {
     return setStatus('Ungültiger Distanzbereich (5–300 km, min < max).');
@@ -768,8 +939,11 @@ el('generateLoop').addEventListener('click', async () => {
       {
         customModel,
         highlights: [...state.highlights],
+        shapePoints: [...state.shapePoints],
+        templateCoords: state.importedTrack,
         allowMeadowEarth,
         maxSlopePercent,
+        firstClimbMode,
       },
     );
     if (seq !== requestSeq) return;
@@ -807,7 +981,6 @@ async function runSearch() {
         if (!btn) return;
         const r = results[Number(btn.dataset.i)];
         map.setView([r.lat, r.lon], 13);
-        refreshTilesSoon();
         ul.hidden = true;
       };
     }
@@ -849,10 +1022,14 @@ el('saveButton').addEventListener('click', () => {
       name,
       waypoints: state.waypoints,
       highlights: state.highlights,
+      shapePoints: state.shapePoints,
+      importedTrack: state.importedTrack,
       mode: state.mode,
       routingProfile: state.routingProfile,
       profile: state.route.profile,
       surfaceSegments: state.route.surfaceSegments ?? [],
+      waytypeSegments: state.route.waytypeSegments ?? [],
+      elevationAvailable: state.route.elevationAvailable,
       settings: planningSettings(),
       coords: state.route.coords,
       distanceM: state.route.distanceM,
@@ -885,10 +1062,17 @@ el('savedRoutes').addEventListener('click', (e) => {
   el('routingProfile').value = restored.routingProfile;
   state.waypoints = restored.waypoints;
   state.highlights = restored.highlights;
+  state.shapePoints = restored.shapePoints;
+  state.importedTrack = restored.importedTrack;
   state.route = restored.route;
   state.highlightMode = false;
+  state.shapePointMode = false;
   el('addHighlight').classList.remove('active');
-  el('addHighlight').textContent = 'Highlight auf Karte setzen';
+  el('addShapePoint').classList.remove('active');
+  el('addHighlight').textContent = state.highlights.length
+    ? 'Weiteres Highlight setzen' : 'Highlight auf Karte setzen';
+  el('addShapePoint').textContent = state.shapePoints.length
+    ? 'Weiteren Formpunkt setzen' : 'Formpunkt auf Karte setzen';
   clearCandidates();
   updateModeControls();
   el('routeName').value = route.name;
@@ -896,13 +1080,14 @@ el('savedRoutes').addEventListener('click', (e) => {
   for (const [id, key] of Object.entries({
     loopKmMin: 'minKm', loopKmMax: 'maxKm', loopHmMin: 'minHm', loopHmMax: 'maxHm',
     loopDirection: 'direction', maxSlopePercent: 'maxSlopePercent',
+    firstClimbMode: 'firstClimbMode',
   })) el(id).value = settings[key];
   el('allowMeadowEarth').checked = settings.allowMeadowEarth;
   renderMarkers();
   renderHighlights();
+  renderShapePoints();
   renderRoute();
   map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
-  refreshTilesSoon();
   setStatus(route.profile ? '' : 'Ältere Route geladen: ursprüngliches Profil und fehlende Oberflächendaten sind unbekannt.');
 });
 
@@ -910,6 +1095,7 @@ updateModeControls();
 renderSavedRoutes();
 renderMarkers();
 renderHighlights();
+renderShapePoints();
 setStatus('Home Base gesetzt. Distanz wählen und Runde erzeugen.');
 
 el('reverseButton').addEventListener('click', () => {
@@ -938,4 +1124,7 @@ el('exportButton').addEventListener('click', () => {
   );
 });
 
-export { state, map, routeLayer, el, setStatus, reroute, renderMarkers, renderRoute, clearAll };
+export {
+  state, map, routeLayer, el, setStatus, reroute, renderMarkers, renderRoute,
+  clearAll, loadImportedPlan,
+};

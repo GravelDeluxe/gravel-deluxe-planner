@@ -4,22 +4,60 @@ import {
   parseGpx,
   analyzeReferenceRoute,
   buildReferenceModel,
+  normalizeReferenceMetadata,
 } from '../js/reference-analysis.js';
 
 const sourceDir = path.resolve('gpx-samples');
 const outputFile = path.resolve('data/reference-analysis.json');
+const matchesFile = path.resolve('data/reference-matches.json');
+let referenceMatches = null;
+try {
+  referenceMatches = JSON.parse(await fs.readFile(matchesFile, 'utf8'));
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+}
+let referenceEnrichment = null;
+try {
+  referenceEnrichment = JSON.parse(await fs.readFile(path.resolve('data/reference-enrichment.json'), 'utf8'));
+  if (referenceEnrichment.graphTimestamp !== referenceMatches?.graphTimestamp) referenceEnrichment = null;
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+}
 const names = (await fs.readdir(sourceDir)).sort((a, b) => a.localeCompare(b, 'de'));
 const analyzed = [];
 const feedbackItems = [];
 const duplicates = [];
 const fingerprints = new Map();
+let counterexamples = 0;
 
 for (const filename of names) {
   const fullPath = path.join(sourceDir, filename);
   if (filename.toLowerCase().endsWith('.gpx')) {
     const xml = await fs.readFile(fullPath, 'utf8');
     const parsed = parseGpx(xml, path.parse(filename).name);
+    let sourceMetadata = {};
+    try {
+      sourceMetadata = JSON.parse(await fs.readFile(`${fullPath}.meta.json`, 'utf8'));
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
     const route = analyzeReferenceRoute({ ...parsed, source: filename });
+    route.edgeIds = referenceMatches?.routes?.[filename] ?? [];
+    const enrichment = referenceEnrichment?.routes?.[filename];
+    if (enrichment?.accepted) route.structure = enrichment.structure;
+    route.metadata = normalizeReferenceMetadata(sourceMetadata, route);
+    if (route.metadata.kind === 'counterexample') {
+      counterexamples++;
+      feedbackItems.push({
+        source: filename,
+        passages: [{
+          problem: sourceMetadata.problem || 'Gegenbeispiel',
+          effect: 'penalty', confidence: 'observed', coords: parsed.coords,
+          note: route.metadata.notes,
+        }],
+      });
+      continue;
+    }
     const original = fingerprints.get(route.fingerprint);
     if (original) {
       duplicates.push({ file: filename, duplicateOf: original });
@@ -37,8 +75,15 @@ for (const filename of names) {
 }
 
 const model = buildReferenceModel(analyzed, feedbackItems);
+model.matchingGraphTimestamp = referenceMatches?.graphTimestamp ?? null;
+model.quality.mapMatched = Boolean(referenceMatches?.graphTimestamp);
+model.quality.matching = model.quality.mapMatched ? 'ors-edge+geometry-proximity' : 'geometry-proximity';
+model.summary.matchedRoutes = analyzed.filter((route) => route.edgeIds.length > 0).length;
+model.summary.unmatchedRoutes = analyzed.length - model.summary.matchedRoutes;
+model.summary.enrichedRoutes = analyzed.filter((route) => referenceEnrichment?.routes?.[route.source]?.accepted).length;
 model.summary.gpxFiles = names.filter((name) => name.toLowerCase().endsWith('.gpx')).length;
 model.summary.duplicates = duplicates.length;
+model.summary.counterexamples = counterexamples;
 model.duplicates = duplicates;
 
 const serialized = `${JSON.stringify(model, null, 2)}\n`;
@@ -53,6 +98,10 @@ if (process.argv.includes('--check')) {
 
 console.log(`Referenzanalyse: ${model.summary.goodRoutes} eindeutige gute Routen`);
 console.log(`Dubletten: ${model.summary.duplicates}`);
+console.log(`Gegenbeispiele: ${model.summary.counterexamples}`);
 console.log(`Feedback: ${model.summary.feedbackFiles} Dateien, ${model.summary.badPassages} Passagen`);
 console.log(`Korridore: ${model.summary.goodCells} gut, ${model.summary.badCells} schlecht`);
+console.log(`Aufbaurahmen: ${Object.keys(model.structureFrame.dimensions).length} gelernte Kennzahlen`);
+console.log(`Leave-one-out: Median ${model.structureValidation.medianAdjustment.toFixed(2)}, P80 ${model.structureValidation.p80Adjustment.toFixed(2)}`);
+console.log(`Angereicherte Referenzen: ${model.summary.enrichedRoutes}`);
 console.log(`Ausgabe: ${path.relative(process.cwd(), outputFile)}`);

@@ -68,6 +68,12 @@
           <option value="NW">Nordwesten</option>
         </select>
         <p class="field-help">Lenkt die Hauptausdehnung der Runde; keine harte Sperrzone.</p>
+        <label for="firstClimbMode">Erster Anstieg &gt; 20 hm</label>
+        <select id="firstClimbMode">
+          <option value="off" selected>Ohne Vorgabe</option>
+          <option value="prefer">Nach 5–10 km bevorzugen</option>
+          <option value="required">Nach 5–10 km erforderlich</option>
+        </select>
         <div class="route-options">
           <label>
             <input id="allowMeadowEarth" type="checkbox" checked />
@@ -78,6 +84,8 @@
         </div>
         <button id="addHighlight" class="secondary-wide" type="button">Highlight auf Karte setzen</button>
         <div id="highlights" class="highlights" aria-label="Highlights"></div>
+        <button id="addShapePoint" class="secondary-wide" type="button">Formpunkt auf Karte setzen</button>
+        <div id="shapePoints" class="highlights" aria-label="Formpunkte"></div>
         <button id="generateLoop" type="button">GravelDeluxe-Vorschläge</button>
         <div id="suggestions" aria-label="Routen-Vorschläge"></div>
         <div class="route-legend" aria-label="Streckenfarben">
@@ -100,6 +108,8 @@
         <button id="exportButton" type="button">GPX</button>
         <button id="feedbackButton" type="button">Feedback</button>
       </div>
+      <input id="routeImportFile" type="file" accept=".gpx,.json,application/gpx+xml,application/json" hidden />
+      <button id="routeImportButton" class="secondary-wide" type="button">GPX oder Feedback laden</button>
 
       <section id="feedbackPanel" class="feedback-panel" hidden aria-label="Routenfeedback">
         <div class="feedback-heading">
@@ -123,9 +133,17 @@
           <option value="anderes">Anderes</option>
         </select>
         <textarea id="feedbackNote" rows="2" placeholder="Optionale Notiz …"></textarea>
+        <label for="feedbackEffect">Wirkung</label>
+        <select id="feedbackEffect">
+          <option value="penalty" selected>Bei ähnlichen Routen abwerten</option>
+          <option value="avoid">Passage künftig sperren</option>
+        </select>
+        <p class="field-help">Nur eindeutig unbefahrbare oder dauerhaft ungeeignete Passagen sperren.</p>
         <div id="feedbackPassages" class="feedback-passages"></div>
         <button id="feedbackExport" type="button">Feedback herunterladen</button>
       </section>
+
+      <section id="routeReport" class="route-report" hidden aria-label="Routenqualität"></section>
 
       <div id="savedRoutes" aria-label="Gespeicherte Routen"></div>
 

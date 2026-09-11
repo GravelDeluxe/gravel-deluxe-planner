@@ -1,0 +1,284 @@
+{
+  "schema": "graveldeluxe-reference-enrichment/v1",
+  "graphTimestamp": "2026-07-23T18:54:59Z",
+  "routes": {
+    "Burg Sinsheim - mehr HM.gpx": {
+      "accepted": true,
+      "overlap": 0.8396912228236079,
+      "waypointCount": 46,
+      "structure": {
+        "ascentPer10Km": 108.22564305305033,
+        "repeatedShare": 0.0016492672549011543,
+        "sharpTurnsPer10Km": 0.6545533632300876,
+        "reversalsPer10Km": 0,
+        "closureShare": 0,
+        "firstClimbKm": 0,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 6.589080246761056,
+        "surfaceChangesPer10Km": 8.906043176466232,
+        "mainRoadShare": 0.004067584265862973,
+        "gravelShare": 0.2572295601793111
+      }
+    },
+    "GR 3 Burgen Alternativ Beilstein - Wildeck - Stettenfels UZ.gpx": {
+      "accepted": true,
+      "overlap": 0.7862365821515295,
+      "waypointCount": 47,
+      "structure": {
+        "ascentPer10Km": 111.1699042463342,
+        "repeatedShare": 0.04780134862302587,
+        "sharpTurnsPer10Km": 3.0757508552084953,
+        "reversalsPer10Km": 1.017573494245622,
+        "closureShare": 0.0016667357886726783,
+        "firstClimbKm": 0.08,
+        "moderateClimbsPer50Km": 1.2719668678070275,
+        "steepClimbsPer50Km": 6.359834339035138,
+        "surfaceChangesPer10Km": 11.72726419551568,
+        "mainRoadShare": 0,
+        "gravelShare": 0.11860057832201851
+      }
+    },
+    "GR Abendrunde Weinsberg Schweinsberg.gpx": {
+      "accepted": true,
+      "overlap": 0.8983789664122668,
+      "waypointCount": 31,
+      "structure": {
+        "ascentPer10Km": 152.3408526646325,
+        "repeatedShare": 0.0011142657191637417,
+        "sharpTurnsPer10Km": 1.822203398628093,
+        "reversalsPer10Km": 0,
+        "closureShare": 0,
+        "firstClimbKm": 2.52,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 17.76569710374723,
+        "surfaceChangesPer10Km": 5.348475451985961,
+        "mainRoadShare": 0,
+        "gravelShare": 0.14171074436202258
+      }
+    },
+    "GR Bad Friedrichshall -Bad Wimpfen - Neckargmünd - Neckar Entlang UZ.gpx": {
+      "accepted": true,
+      "overlap": 0.7854032506752507,
+      "waypointCount": 46,
+      "structure": {
+        "ascentPer10Km": 90.410914630153,
+        "repeatedShare": 0.028527742469758328,
+        "sharpTurnsPer10Km": 0.6295594766389201,
+        "reversalsPer10Km": 0.2551578023428589,
+        "closureShare": 0,
+        "firstClimbKm": 0.28,
+        "moderateClimbsPer50Km": 0.8505260078095298,
+        "steepClimbsPer50Km": 6.378945058571473,
+        "surfaceChangesPer10Km": 6.386808015617537,
+        "mainRoadShare": 0.003832001395660919,
+        "gravelShare": 0.14664569914171896
+      }
+    },
+    "GR Besigheim - Ausblick - Stromberg - Brackenheim - Lauffen.gpx": {
+      "accepted": true,
+      "overlap": 0.7939995379793336,
+      "waypointCount": 47,
+      "structure": {
+        "ascentPer10Km": 129.84788978360567,
+        "repeatedShare": 0.009903868366378188,
+        "sharpTurnsPer10Km": 2.918333447254317,
+        "reversalsPer10Km": 0.37637069502494397,
+        "closureShare": 0.001336294708666597,
+        "firstClimbKm": 3.16,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 9.4092673756236,
+        "surfaceChangesPer10Km": null,
+        "mainRoadShare": 0.0001773822257985866,
+        "gravelShare": null
+      }
+    },
+    "GR Bikepacking Grossbottwar Preforst Backnang Murrtal.gpx": {
+      "accepted": true,
+      "overlap": 0.8189196815836951,
+      "waypointCount": 47,
+      "structure": {
+        "ascentPer10Km": 118.34040175936927,
+        "repeatedShare": 0.029575400438203114,
+        "sharpTurnsPer10Km": 1.9650063429006064,
+        "reversalsPer10Km": 1.2589404442486094,
+        "closureShare": 0,
+        "firstClimbKm": 0.08,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 8.655215554209189,
+        "surfaceChangesPer10Km": 5.047535008119999,
+        "mainRoadShare": 0.0035780034819399044,
+        "gravelShare": 0.05667816418761885
+      }
+    },
+    "GR Cavedine -Panoramas Tour.gpx": {
+      "accepted": false,
+      "reason": "außerhalb des ORS-Graphs"
+    },
+    "GR Dermulo - Sentiero Margherita - Unterer Nonsberg Radweg.gpx": {
+      "accepted": false,
+      "reason": "außerhalb des ORS-Graphs"
+    },
+    "GR Gravel - Quer - Router.gpx": {
+      "accepted": true,
+      "overlap": 0.8165383425625797,
+      "waypointCount": 36,
+      "structure": {
+        "ascentPer10Km": 170.7540484955324,
+        "repeatedShare": 0.13170990288667742,
+        "sharpTurnsPer10Km": 2.8200867818431745,
+        "reversalsPer10Km": 0.6913119372288762,
+        "closureShare": 0.0036194826981910356,
+        "firstClimbKm": 0.88,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 12.097958901505331,
+        "surfaceChangesPer10Km": 12.131175265878184,
+        "mainRoadShare": 0.00024422355294139944,
+        "gravelShare": 0.45351832248313495
+      }
+    },
+    "GR Leingarten Eisdiele V2.gpx": {
+      "accepted": true,
+      "overlap": 0.8822399361259281,
+      "waypointCount": 46,
+      "structure": {
+        "ascentPer10Km": 63.619251921722025,
+        "repeatedShare": 0.025001760966595326,
+        "sharpTurnsPer10Km": 1.8652269246242648,
+        "reversalsPer10Km": 0.2628894707509175,
+        "closureShare": 0,
+        "firstClimbKm": 0.36,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 2.628894707509175,
+        "surfaceChangesPer10Km": 7.105763643137618,
+        "mainRoadShare": 0,
+        "gravelShare": 0.2090696574064072
+      }
+    },
+    "GR light 100km Bad Friedrichshall Osterburken.gpx": {
+      "accepted": true,
+      "overlap": 0.7994577239816327,
+      "waypointCount": 47,
+      "structure": {
+        "ascentPer10Km": 101.280650531164,
+        "repeatedShare": 0.00804332466201033,
+        "sharpTurnsPer10Km": 1.1043502570217507,
+        "reversalsPer10Km": 0.19458338238456097,
+        "closureShare": 0,
+        "firstClimbKm": 2.52,
+        "moderateClimbsPer50Km": 1.4593753678842074,
+        "steepClimbsPer50Km": 8.269793751343842,
+        "surfaceChangesPer10Km": 4.972237063788203,
+        "mainRoadShare": 0.00005883619082366598,
+        "gravelShare": 0.10701921941130099
+      }
+    },
+    "GR Marbach - Burg Lichtenberg - Beilstein GUZ.gpx": {
+      "accepted": true,
+      "overlap": 0.7226646979433252,
+      "waypointCount": 46,
+      "structure": {
+        "ascentPer10Km": 90.50160588761585,
+        "repeatedShare": 0.0468372119164863,
+        "sharpTurnsPer10Km": 2.231489951699335,
+        "reversalsPer10Km": 0.7369837612998034,
+        "closureShare": 0,
+        "firstClimbKm": 0.96,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 5.895870090398427,
+        "surfaceChangesPer10Km": 10.178795660590724,
+        "mainRoadShare": 0,
+        "gravelShare": 0.10321465896971532
+      }
+    },
+    "GR Michaelsberg 2024.gpx": {
+      "accepted": true,
+      "overlap": 0.8152628311396736,
+      "waypointCount": 46,
+      "structure": {
+        "ascentPer10Km": 82.55002257032339,
+        "repeatedShare": 0.04243961987331825,
+        "sharpTurnsPer10Km": 1.386915504373345,
+        "reversalsPer10Km": 0.4987916771620749,
+        "closureShare": 0,
+        "firstClimbKm": 6.24,
+        "moderateClimbsPer50Km": 1.2469791929051872,
+        "steepClimbsPer50Km": 4.987916771620749,
+        "surfaceChangesPer10Km": 9.985792911368998,
+        "mainRoadShare": 0.0006559011354181653,
+        "gravelShare": 0.003303086146924878
+      }
+    },
+    "GR Mosbach Frühling GUZ.gpx": {
+      "accepted": true,
+      "overlap": 0.7576087975554303,
+      "waypointCount": 46,
+      "structure": {
+        "ascentPer10Km": 90.57422889903512,
+        "repeatedShare": 0.03665189553093291,
+        "sharpTurnsPer10Km": 1.3680959222204363,
+        "reversalsPer10Km": 0.39040615904756515,
+        "closureShare": 0,
+        "firstClimbKm": 7.92,
+        "moderateClimbsPer50Km": 0.9760153976189129,
+        "steepClimbsPer50Km": 4.880076988094564,
+        "surfaceChangesPer10Km": 6.450733613444194,
+        "mainRoadShare": 0.001595650346559848,
+        "gravelShare": 0.06745510653913851
+      }
+    },
+    "GR Oberhalb Mosbach.gpx": {
+      "accepted": true,
+      "overlap": 0.7183066697446212,
+      "waypointCount": 47,
+      "structure": {
+        "ascentPer10Km": 102.18536917061746,
+        "repeatedShare": 0.02461030439059089,
+        "sharpTurnsPer10Km": 2.437094375362162,
+        "reversalsPer10Km": 1.3221766805810022,
+        "closureShare": 0,
+        "firstClimbKm": 1.32,
+        "moderateClimbsPer50Km": 2.833235744102148,
+        "steepClimbsPer50Km": 1.888823829401432,
+        "surfaceChangesPer10Km": 6.625851182082162,
+        "mainRoadShare": 0.002237032965601861,
+        "gravelShare": 0.30320129614664904
+      }
+    },
+    "GR Stettenfels - Obergruppenbach - Schweinsbergturm - Donnbronn.gpx": {
+      "accepted": true,
+      "overlap": 0.7979148273341085,
+      "waypointCount": 37,
+      "structure": {
+        "ascentPer10Km": 124.72715933894605,
+        "repeatedShare": 0.005262634704840925,
+        "sharpTurnsPer10Km": 2.438907330192474,
+        "reversalsPer10Km": 0.35035718915434283,
+        "closureShare": 0,
+        "firstClimbKm": 0.92,
+        "moderateClimbsPer50Km": 0,
+        "steepClimbsPer50Km": 15.766073511945427,
+        "surfaceChangesPer10Km": 7.016846273121233,
+        "mainRoadShare": 0,
+        "gravelShare": 0.23326680043455086
+      }
+    },
+    "GR Weit West.gpx": {
+      "accepted": true,
+      "overlap": 0.8208866393237105,
+      "waypointCount": 46,
+      "structure": {
+        "ascentPer10Km": 107.33936918213452,
+        "repeatedShare": 0.023106260941336276,
+        "sharpTurnsPer10Km": 1.4418580013895084,
+        "reversalsPer10Km": 0.15925722430583755,
+        "closureShare": 0,
+        "firstClimbKm": 1.56,
+        "moderateClimbsPer50Km": 0.7962861215291878,
+        "steepClimbsPer50Km": 4.777716729175127,
+        "surfaceChangesPer10Km": 8.605090281601095,
+        "mainRoadShare": 0,
+        "gravelShare": 0.2484309024186845
+      }
+    }
+  }
+}

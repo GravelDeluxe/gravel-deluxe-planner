@@ -6,7 +6,7 @@
 make validate
 ```
 
-Aktueller Stand: 108 Node-Tests, BRouter-Profilintegrität und eine reale
+Aktueller Stand: 135 Node-Tests, BRouter-Profilintegrität und eine reale
 Freiburg–Schwarzwald-Route mit `gravel-konstant` erfolgreich geprüft.
 
 ## Profilprüfung
@@ -47,7 +47,11 @@ Zu protokollieren:
   Reihenfolge, ungültige Markierungen sowie den Export der vollständigen Route.
 - Referenztests prüfen normales und Hammerhead-GPX, Rasterbildung,
   Routenkennzahlen, positive Korridore, negative Feedbackpassagen und deren
-  Einfluss auf das Kandidatenranking.
+  Einfluss auf das Kandidatenranking sowie Metadaten und Kalibrierungsbereiche.
+- Lernmodelltests prüfen robuste Strukturrahmen, Strafen nur außerhalb des
+  Rahmens und Leave-one-out-Auswertung ohne die jeweils geprüfte Route.
+- Importtests prüfen geschlossene und offene GPX, GPX-Wegpunkte,
+  Feedback-JSON und die Übernahme in den editierbaren App-Zustand.
 - ORS-, Constraint- und Highlighttests prüfen Oberflächen-Zusatzdaten,
   Steigungsberechnung, Koordinatenkonvertierung, Via-Routing sowie die
   räumliche Einsortierung verpflichtender Highlights und Graph-Snapping. Der ORS-Smoke-Test
@@ -68,3 +72,8 @@ Dateiänderung. Beide Compose-Dateien sind Bestandteil von `make validate`.
 Noch offen: Desktop-/Mobilabnahme im echten Browser und die systematische
 Qualitätsvergleichssammlung aus Meilenstein M2. Einzelne erfolgreiche
 Smoke-Routen sind kein Nachweis einer generell besseren Streckenführung.
+
+M3-Tests decken geometrisches Feedbackmatching, schmale explizite Sperren,
+räumliches Scoping, Oberflächen-/Straßen-/Anstiegskennzahlen, die optionale
+Erste-Anstieg-Pflicht, Kandidatenvielfalt und den begrenzten Kachel-Retry ab.
+Der ORS-Smoke-Test fordert `surface` und `waytype` an.

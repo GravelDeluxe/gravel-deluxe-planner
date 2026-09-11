@@ -116,7 +116,9 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
 .search-row input,
 #loopControls input[type="number"],
 #loopDirection,
+#firstClimbMode,
 #feedbackProblem,
+#feedbackEffect,
 #routeName,
 #routingProfile {
   flex: 1; min-width: 0; padding: 9px 11px;
@@ -139,7 +141,8 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
-#loopDirection {
+#loopDirection,
+#firstClimbMode {
   width: 100%; margin-bottom: 5px;
 }
 #routingProfile:focus-visible {
@@ -223,6 +226,17 @@ button:focus-visible {
   padding: 2px 7px; color: var(--danger); background: transparent;
   border: 1px solid var(--border); border-radius: var(--radius-xs);
 }
+.highlight-map-marker,
+.shape-map-marker {
+  display: grid; place-items: center; width: 22px; height: 22px;
+  color: #111827; background: #facc15; border: 3px solid #a16207;
+  border-radius: 50%; font-size: 11px; font-weight: 800;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.35);
+}
+.shape-map-marker {
+  color: #fff; background: #2563eb; border-color: #1e3a8a;
+  border-radius: 5px;
+}
 
 /* ---- Route feedback -------------------------------------------------------- */
 .feedback-panel {
@@ -251,13 +265,25 @@ button:focus-visible {
   border: 1px solid var(--border); border-radius: var(--radius-xs);
 }
 .feedback-markers button { flex: 1; }
-#feedbackProblem, #feedbackNote {
+#feedbackProblem, #feedbackEffect, #feedbackNote {
   width: 100%; margin: 5px 0 8px; padding: 8px 9px;
   color: var(--fg); background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-xs); font: inherit; font-size: 0.78rem;
 }
 #feedbackNote { resize: vertical; }
 #feedbackExport { width: 100%; margin-top: 3px; }
+.route-report {
+  margin: 4px 0 12px; padding: 11px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--fg); font-size: 0.74rem;
+}
+.route-report h2 { margin: 0 0 8px; font-size: 0.86rem; }
+.route-report dl { display: grid; grid-template-columns: 1fr auto; gap: 5px 10px; margin: 0; }
+.route-report dt { color: var(--fg-muted); }
+.route-report dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.surface-share { display: flex; height: 7px; overflow: hidden; margin: 9px 0 5px; border-radius: 5px; }
+.surface-share span { min-width: 1px; }
+.route-report details { margin-top: 8px; color: var(--fg-muted); }
 .feedback-passage {
   display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
   color: var(--fg-muted); font-size: 0.73rem;
@@ -313,6 +339,9 @@ button:focus-visible {
 /* ---- Loop suggestions ------------------------------------------------------ */
 #suggestions { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .suggestion { text-align: left; }
+.suggestion strong, .suggestion small { display: block; }
+.suggestion small { margin-top: 3px; color: var(--fg-muted); font-weight: 400; line-height: 1.25; }
+.suggestion small.warning { color: var(--danger); }
 .suggestion:hover { background: var(--surface-hover); border-color: var(--border-strong); }
 .suggestion.active {
   border-color: var(--accent); background: var(--accent-soft);

@@ -13,7 +13,7 @@ SEGMENT_FILES := $(addprefix $(SEGMENT_DIR)/,$(SEGMENTS))
 
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor dirs segments ors-data ors-rebuild analyze build up setup smoke smoke-ors test validate logs status down restart
+.PHONY: help doctor dirs segments ors-data ors-rebuild analyze match-references enrich-references build up setup smoke smoke-ors test validate logs status down restart
 
 help:
 	@echo "Gravel Router – lokale Entwicklungsumgebung"
@@ -24,6 +24,8 @@ help:
 	@echo "  make smoke-ors lokale ORS-Instanz und Rundtour prüfen"
 	@echo "  make ors-rebuild GravelDeluxe-Graph mit Oberflächendaten neu bauen"
 	@echo "  make analyze   GPX- und Feedbackreferenzen neu analysieren"
+	@echo "  make match-references  GPX auf den laufenden ORS-Graph mappen"
+	@echo "  make enrich-references  GPX mit Oberflächen- und Straßenwerten ergänzen"
 	@echo "  make test      JavaScript-Tests ausführen"
 	@echo "  make validate  Tests, Compose und Git-Diff prüfen"
 	@echo "  make logs      Container-Logs verfolgen"
@@ -77,6 +79,14 @@ $(ORS_PBF):
 	@mv "$@.part" "$@"
 
 analyze:
+	npm run analyze
+
+match-references:
+	npm run match-references
+	npm run analyze
+
+enrich-references:
+	npm run enrich-references
 	npm run analyze
 
 build: doctor analyze

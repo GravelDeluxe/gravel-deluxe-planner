@@ -4,6 +4,40 @@ Stand: 2026-09-10
 
 ## Aktueller Stand
 
+- M5-Import umgesetzt: GPX- und Feedbackdateien lassen sich als editierbare
+  Planung laden. Geschlossene Tracks erhalten vier verschiebbare Formpunkte,
+  offene Tracks eine editierbare Punktfolge; GPX-Wegpunkte bleiben Highlights.
+- GravelDeluxe-Neuberechnungen verwenden importierte Formpunkte und Highlights.
+  Speicherung erhält Formpunkte und die ursprüngliche Importgeometrie.
+- Referenz-GPX unterstützen optionale Metadaten für Region, Saison,
+  Fahrradtyp, Bewertung, Notizen, Klassen und Gegenbeispiele. Das Modell weist
+  robuste Distanz-/Höhenmeterbereiche und die Datensatzabdeckung aus.
+- 15 der 17 eindeutigen Referenzen sind per ORS-HMM auf 7.385 Kanten des
+  aktuellen Baden-Württemberg-Graphs gemappt. Zwei Trentino-Routen bleiben
+  mangels Graphabdeckung im geometrischen Rückfallmodell. Der Graph-Zeitstempel
+  verhindert Vergleiche mit veralteten internen Kanten-IDs.
+- Gute Referenzen definieren jetzt den Rankingrahmen für Höhenmeterdichte,
+  Doppelbefahrung, Richtungswechsel, Kehrtwenden, Rundenschluss und Anstiege.
+  Das bewertungsgewichtete 20.–80.-Perzentil liefert sinnvolle Band-, Ober-
+  oder Untergrenzen; bessere Werte werden nicht bestraft. Abweichungen
+  erscheinen je Kennzahl im Routenreport.
+- Alle 15 vom Baden-Württemberg-Graph abgedeckten Referenzen wurden mit
+  72–90 % Tracktreue angereichert. Damit lernt der Rahmen jetzt auch
+  Oberflächenwechsel, Hauptstraßen- und Gravelanteil aus denselben
+  Qualitätsfunktionen wie das Kandidatenranking.
+- Eine Leave-one-out-Prüfung berechnet für jede Referenz einen Rahmen ohne
+  diese Route. Aktuell: mediane Abweichung 0,57, 80. Perzentil 0,92.
+- M3 umgesetzt: Feedback unterscheidet Rankingstrafe und ausdrücklich
+  beobachtete Sperrpassage; räumliches Matching verwendet einen schmalen
+  Geometriekorridor und das Referenzmodell wird auf das Suchgebiet begrenzt.
+- Routenreport ergänzt: Oberflächenanteile/-wechsel, Datenlücken,
+  Hauptstraßenanteil, Doppelbefahrung, Anstiege und erster signifikanter
+  Anstieg. Erste-Anstieg-Regel ist Aus/Präferenz/Pflicht.
+- Nahezu identische Kandidaten werden zugunsten unterschiedlicher Alternativen
+  zurückgestellt. Kandidaten zeigen Teilwerte und Gesamtscore.
+- Kartenkacheln werden pro Kachel mit Timeout und begrenztem Backoff geladen;
+  während Zoomanimationen werden keine noch laufenden Bilder mehr global neu
+  gestartet.
 - Umsetzungsplan in M1–M5 mit Abhängigkeiten und Abnahmekriterien gegliedert;
   die früheren Phasen bleiben als langfristige Spezifikation erhalten.
 - Speicherformat `graveldeluxe-saved-route/v2` erhält Profil, Oberflächen,
@@ -14,7 +48,7 @@ Stand: 2026-09-10
 - BRouter-Profilwahl nur noch im Streckenmodus. Dev-Server leitet `/brouter`
   und `/ors` an den lokalen Stack weiter; unbekannte Oberflächen sind neutral
   markiert und bestätigen keinen Oberflächenausschluss.
-- 108 Node-Tests erfolgreich, einschließlich App-Ereignissen mit
+- 135 Node-Tests erfolgreich, einschließlich App-Ereignissen mit
   DOM-/Leaflet-Adaptern. Beide Compose-Dateien und Referenzmodell geprüft.
 - Portainer nutzt einen absoluten Host-Pfad für die ORS-Konfiguration;
   CI prüft Compose und das reproduzierbare Referenzmodell.
@@ -128,9 +162,10 @@ Stand: 2026-09-10
 - Feedbacktypen „unnötige Abkürzung“ und „zu viel Zig-Zag“ ergänzt und im
   Referenzmodell nach Kategorie getrennt. Ein allgemeiner Fahrfluss-Score
   bestraft zusätzlich starke Richtungswechsel, Kehrtwenden und Doppelbefahrung.
-- Negative Feedbackzellen werden nun als ORS-`avoid_polygons` bereits bei der
-  Routensuche ausgeschlossen; Start und Highlights erhalten einen Schutzradius.
-  Feedback ist damit nicht mehr nur eine schwache nachgelagerte Rankingstrafe.
+- Negative Feedbackzellen wurden zunächst pauschal als ORS-`avoid_polygons`
+  ausgeschlossen. M3 hat dieses grobe Verhalten ersetzt: Nur ausdrücklich
+  gesperrte, beobachtete Passagen erzeugen einen schmalen Vermeidungskorridor;
+  sonstiges und älteres Feedback bleibt eine Rankingstrafe.
 - Maximalsteigung ist lexikografisch wichtiger als Distanz: Die
   Kandidatensuche erweitert sich bis 150 % der gewünschten Maximaldistanz und
   sortiert jede steigungsverträgliche Route vor einer kürzeren steilen Route.
@@ -144,24 +179,25 @@ Stand: 2026-09-10
 - Scrubber dauerhaft in das untere Distanz-/Höhenprofil-Overlay verschoben.
   Er koppelt Kartenpunkt, Kilometer, aktuelle Höhe und Profilcursor; IN/OUT-
   Bereiche erscheinen auf Karte und Höhenprofil gelb, Steigungen hellorange.
-- Spätere Funktion „Route mit editierbaren Wegpunkten laden und durch den
-  GravelDeluxe-Algorithmus optimieren“ im Implementierungsplan vorgemerkt.
+- GPX- und Feedbackroute als editierbare Planung laden und über sichtbare
+  Formpunkte mit dem GravelDeluxe-Algorithmus neu berechnen.
 
 ## Nächste Schritte
 
-1. **M1 abschließen:** visuelle Desktop-/Mobilabnahme; der verfügbare
+1. **M1/M3 visuell abnehmen:** Desktop-/Mobilansicht, Kachel-Zoom,
+   Qualitätsreport und erste-Anstieg-Regel prüfen; der verfügbare
    Computerzugang bietet derzeit keinen Browser. DOM-Adaptertests ersetzen
    diese Abnahme nicht.
 2. **M2:** begrenzte, abbrechbare Kandidatensuche und reproduzierbare
    Qualitätsvergleiche. Alle drei BRouter-Fixtures mit Original und neuem
    Profil vergleichen; gerichtete ORS-Runden und Highlights separat prüfen.
-3. **M3:** Feedback nach Kontext statt pauschaler Rastersperren anwenden;
-   Oberflächenkontinuität, Hauptstraßen, Anstiegsqualität und erster Anstieg
-   als erklärbaren Report ergänzen.
+3. **M3 kalibrieren:** Reportwerte auf festen Teststrecken prüfen und Gewichte
+   erst anhand der M2-Vergleichsläufe verändern.
 4. **M4:** GitHub-Origin mit GitLab-CI-/Registry-Veröffentlichung abgleichen,
    Zielserver einrichten und Updates/Rollback praktisch prüfen.
-5. **M5:** OSM-Map-Matching für Referenzen, kalibrierbare Presets,
-   editierbarer GPX-Import und vollständige DACH-Abdeckung.
+5. **M5:** Referenzen um Oberflächen-/Straßenwerte ergänzen, Presets
+   kalibrieren, an einer separaten Testsammlung validieren und die
+   DACH-Abdeckung vervollständigen.
 
 Details und Abnahmekriterien: `IMPLEMENTATION_PLAN.md`. Fehlender echter
 HTTP-Abbruch, Teilfehlerbehandlung und systematische Qualitätsnachweise sind

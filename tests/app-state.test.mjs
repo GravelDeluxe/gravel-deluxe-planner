@@ -38,6 +38,8 @@ const elements = new Map([...html.matchAll(/<[^>]*\bid="([^"]+)"[^>]*>/g)].map((
 }));
 elements.get('routingProfile').value = 'gravel-konstant';
 elements.get('loopDirection').value = 'any';
+elements.get('firstClimbMode').value = 'off';
+elements.get('feedbackEffect').value = 'penalty';
 const modes = [new Element('loop'), new Element('manual')];
 const memory = new Map();
 globalThis.localStorage = {
@@ -54,11 +56,12 @@ globalThis.L = {
   control: { zoom: () => new Layer() }, DomEvent: { stopPropagation() {} },
 };
 globalThis.fetch = async () => ({ ok: false });
-const { state, el, clearAll } = await import('../js/app.js');
+const { state, el, clearAll, loadImportedPlan } = await import('../js/app.js');
 const route = () => ({
   coords: [[49, 9, 100], [49.001, 9, 120], [49.002, 9, 110]],
   distanceM: 222, ascendM: 20, profile: 'ors-gravel-deluxe',
   surfaceSegments: [[0, 1, 3], [1, 2, 17]],
+  waytypeSegments: [],
 });
 function seedResult() {
   clearAll();
@@ -81,9 +84,9 @@ test('app state regressions', async (t) => {
   });
 
   await t.test('every loop setting invalidates obsolete routes and suggestions', async () => {
-    for (const id of ['loopKmMin', 'loopKmMax', 'loopHmMin', 'loopHmMax', 'maxSlopePercent', 'loopDirection', 'allowMeadowEarth']) {
+    for (const id of ['loopKmMin', 'loopKmMax', 'loopHmMin', 'loopHmMax', 'maxSlopePercent', 'loopDirection', 'firstClimbMode', 'allowMeadowEarth']) {
       seedResult();
-      await el(id).emit(['loopDirection', 'allowMeadowEarth'].includes(id) ? 'change' : 'input');
+      await el(id).emit(['loopDirection', 'firstClimbMode', 'allowMeadowEarth'].includes(id) ? 'change' : 'input');
       assert.equal(state.route, null, id);
       assert.deepEqual(state.candidates, [], id);
       assert.equal(el('suggestions').innerHTML, '', id);
@@ -122,6 +125,8 @@ test('app state regressions', async (t) => {
     assert.deepEqual(state.route.surfaceSegments, [[0, 1, 17], [1, 2, 3]]);
     assert.deepEqual(state.candidates, []);
     assert.equal(el('statAscent').textContent, '10 hm');
+    assert.equal(el('routeReport').hidden, false);
+    assert.match(el('routeReport').innerHTML, /Routenqualität/);
   });
 
   await t.test('removing a required highlight invalidates the displayed route', async () => {
@@ -133,5 +138,20 @@ test('app state regressions', async (t) => {
     assert.deepEqual(state.highlights, []);
     assert.equal(state.route, null);
     assert.deepEqual(state.candidates, []);
+  });
+
+  await t.test('an imported loop becomes an editable planning state', () => {
+    loadImportedPlan({
+      name: 'Importierte Runde', mode: 'loop',
+      waypoints: [[49, 9]], shapePoints: [[49.01, 9.01]],
+      highlights: [{ coords: [49.02, 9.02], name: 'Burg' }],
+      route: route(),
+    });
+    assert.equal(state.mode, 'loop');
+    assert.deepEqual(state.waypoints, [[49, 9]]);
+    assert.deepEqual(state.shapePoints, [[49.01, 9.01]]);
+    assert.deepEqual(state.highlights, [[49.02, 9.02]]);
+    assert.equal(el('routeName').value, 'Importierte Runde');
+    assert.match(el('status').textContent, /1 Formpunkten und 1 Highlights/);
   });
 });

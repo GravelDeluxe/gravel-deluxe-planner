@@ -1,21 +1,7 @@
 import { haversineM } from './geo.js';
 import { MEADOW_EARTH_SURFACES } from './route-constraints.js';
 
-const SURFACES = {
-  0: ['Unbekannt', '#94a3b8'],
-  1: ['Befestigt', '#64748b'],
-  2: ['Unbefestigt', '#d97706'],
-  3: ['Asphalt', '#475569'],
-  4: ['Beton', '#78716c'],
-  8: ['Verdichteter Schotter', '#ca8a04'],
-  10: ['Schotter', '#ea580c'],
-  11: ['Erde', '#92400e'],
-  12: ['Naturboden/Matsch', '#78350f'],
-  14: ['Pflaster', '#71717a'],
-  15: ['Sand', '#eab308'],
-  17: ['Gras', '#15803d'],
-  18: ['Rasengitter', '#16a34a'],
-};
+import { SURFACES } from './surfaces.js';
 
 function gradeFrom(coords, startIndex, minimumWindowM = 80) {
   let distanceM = 0;

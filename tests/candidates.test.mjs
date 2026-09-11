@@ -27,6 +27,27 @@ test('rankRoundTripCandidates: candidates matching km and hm rank first', () => 
   assert.equal(ranked[1].inRange, false);
 });
 
+test('rankRoundTripCandidates uses good-route structure as a soft frame', () => {
+  const referenceModel = {
+    schema: 'graveldeluxe-reference-model/v1', goodCells: {}, feedbackCorridors: [],
+    structureFrame: {
+      dimensions: {
+        ascentPer10Km: {
+          label: 'Höhenmeter / 10 km', weight: 1, sampleSize: 10,
+          low: 80, median: 100, high: 120,
+        },
+      },
+    },
+  };
+  const ranked = rankRoundTripCandidates(
+    [candidate(40, 4000, 'outside-frame'), candidate(40, 400, 'inside-frame')],
+    { minKm: 30, maxKm: 50, minHm: 0, maxHm: 5000, referenceModel },
+  );
+  assert.equal(ranked[0].id, 'inside-frame');
+  assert.equal(ranked[0].learnedStructure.adjustment, 0);
+  assert.ok(ranked[1].learnedStructure.adjustment > 0);
+});
+
 test('rankRoundTripCandidates: annotates missed target and limits output', () => {
   const ranked = rankRoundTripCandidates(
     [
@@ -135,4 +156,56 @@ test('rankRoundTripCandidates: extra kilometres beat excessive slope', () => {
   assert.equal(ranked[0].id, 'longer-but-flowing');
   assert.equal(ranked[0].constraints.slopeAllowed, true);
   assert.equal(ranked[0].distanceInRange, false);
+});
+
+test('rankRoundTripCandidates: required first climb favors the 5–10 km window', () => {
+  const build = (id, climbAt) => {
+    const coords = [];
+    for (let index = 0; index <= 120; index++) {
+      const start = climbAt * 10;
+      const elevation = index <= start ? 100 : Math.min(150, 100 + (index - start) * 5);
+      coords.push([49 + index * 0.0009, 9 + (id === 'match' ? 0 : 0.02), elevation]);
+    }
+    return { id, route: { coords, distanceM: 12000, ascendM: 50, elevationAvailable: true } };
+  };
+  const ranked = rankRoundTripCandidates(
+    [build('late', 11), build('match', 6)],
+    { minKm: 10, maxKm: 15, minHm: 0, maxHm: 500, firstClimbMode: 'required' },
+  );
+  assert.equal(ranked[0].id, 'match');
+  assert.equal(ranked[0].firstClimb.allowed, true);
+  assert.equal(ranked[1].firstClimb.allowed, false);
+});
+
+test('required first climb stays mandatory even when the matching route is steeper', () => {
+  const build = (id, climbAt, gainPerPoint) => {
+    const coords = [];
+    for (let index = 0; index <= 120; index++) {
+      const start = climbAt * 10;
+      const elevation = index <= start ? 100 : Math.min(160, 100 + (index - start) * gainPerPoint);
+      coords.push([49 + index * 0.0009, id === 'required-match' ? 9 : 9.02, elevation]);
+    }
+    return { id, route: { coords, distanceM: 12000, ascendM: 60, elevationAvailable: true } };
+  };
+  const ranked = rankRoundTripCandidates(
+    [build('late-flat', 11, 3), build('required-match', 6, 15)],
+    {
+      minKm: 10, maxKm: 15, minHm: 0, maxHm: 500,
+      firstClimbMode: 'required', maxSlopePercent: 10,
+    },
+  );
+  assert.equal(ranked[0].id, 'required-match');
+  assert.equal(ranked[0].constraints.slopeAllowed, false);
+});
+
+test('rankRoundTripCandidates: keeps distinct alternatives ahead of a near duplicate', () => {
+  const route = (id, lon) => ({
+    id,
+    route: { distanceM: 1000, ascendM: 10, coords: [[49, lon, 100], [49.01, lon, 110]] },
+  });
+  const ranked = rankRoundTripCandidates(
+    [route('best', 9), route('duplicate', 9), route('alternative', 9.02)],
+    { minKm: 0.5, maxKm: 2, minHm: 0, maxHm: 50, limit: 2 },
+  );
+  assert.deepEqual(ranked.map((candidate) => candidate.id), ['best', 'alternative']);
 });

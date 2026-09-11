@@ -54,9 +54,50 @@ schlechten Korridoren. `js/reference-analysis.js` bewertet ORS-Kandidaten gegen
 dieses Raster; negatives Feedback wirkt stärker als der positive Referenzbonus.
 Die Optimierung verändert nicht den ORS-Graph, sondern die transparente Auswahl
 der erzeugten Kandidaten (zehn native oder bis zu neun gerichtete Varianten).
-Aktuell werden alle negativen Rasterzellen zusätzlich als Sperrflächen an ORS
-übergeben. Die kontextabhängige Trennung von Feedbackstrafen und echten
-Sperren ist in Meilenstein M3 geplant.
+Feedbackpassagen werden geometrisch mit zwölf Metern Toleranz abgeglichen.
+Normales Feedback beeinflusst ausschließlich das Ranking. Nur eine ausdrücklich
+als „Passage künftig sperren“ exportierte und beobachtete Passage erzeugt einen
+schmalen ORS-Vermeidungskorridor. Ältere Feedbackdateien bleiben reine
+Rankinghinweise. Vor der Kandidatensuche wird das Referenzmodell räumlich auf
+das Suchgebiet begrenzt.
+
+`scripts/match-references.mjs` ordnet die GPX-Linien per HMM dem lokalen
+ORS-/OSM-Graphen zu. Das Modell speichert interne Kanten-IDs und den
+Graph-Zeitstempel. Neue Kandidaten werden gesammelt über denselben Endpunkt
+gemappt; nur bei passendem Zeitstempel ersetzt der weggenaue Vergleich das
+Raster. Interne Kanten-IDs sind an genau diesen Graphbau gebunden.
+
+`scripts/enrich-references.mjs` rekonstruiert eine Referenz mit höchstens 50
+Stützpunkten über das GravelDeluxe-Profil. Erst ab 70 % geometrischer
+Trackübereinstimmung übernimmt die Analyse Oberfläche, Straßenklasse und das
+ORS-Höhenprofil. Damit verwendet der Strukturrahmen dieselbe Auswertung wie
+das Kandidatenranking, ohne eine deutlich veränderte Rekonstruktion als
+Originaltour auszugeben.
+
+Die Referenzanalyse führt für gute Touren zusätzlich `analyzeTourStructure`
+aus. `buildStructureFrame` bildet bewertungsgewichtete 20-/50-/80-Perzentile,
+sobald mindestens fünf Referenzen eine Kennzahl liefern. Je Kennzahl gilt eine
+Bandbreite, eine Ober- oder eine Untergrenze; bessere Werte auf der offenen
+Seite bleiben neutral. Außerhalb berechnet `scoreTourStructure` eine
+begrenzte, je Kennzahl ausgewiesene Abweichungsstrafe. Wenn ein gelernter
+Rahmen verfügbar ist, ersetzt er die frühere feste Fahrflussstrafe. Harte
+Nutzervorgaben und Sicherheitsgrenzen bleiben unabhängig davon bestehen.
+
+Optionale `.gpx.meta.json`-Dateien gewichten Referenzen nach Bewertung und
+führen Region, Saison, Fahrradtyp, Notizen sowie automatisch ableitbare Klassen.
+Gegenbeispiele gelangen als negative Gesamtkorridore in das Modell. Die App
+parst GPX und Feedback-JSON über `js/route-import.js`; geschlossene Tracks
+werden zu Start plus Formpunkten, offene Tracks zu einer manuellen Punktfolge.
+
+ORS liefert `surface` und `waytype` als Zusatzdaten. `js/route-quality.js`
+erstellt daraus den Routenreport und erkennt Anstiegssegmente sowie den ersten
+Anstieg mit mehr als 20 Höhenmetern. `js/route-geometry.js` enthält die
+Geometrienähe für Feedback und Kandidatenähnlichkeit.
+
+CyclOSM-Kacheln werden von `js/tiles.js` einzeln mit Timeout und begrenztem
+Backoff geladen. Der Layer aktualisiert erst nach Ende einer Zoombewegung;
+dadurch werden laufende Kachelanfragen nicht bei jedem Zoomschritt abgebrochen
+oder durch globale DOM-Neuladungen zurückgesetzt.
 
 ## Profile
 

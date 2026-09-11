@@ -78,6 +78,16 @@ test('buildBadPassage: preserves shortcut and zig-zag problem categories', () =>
   );
 });
 
+test('feedback passage distinguishes ranking penalty from explicit avoidance', () => {
+  const defaultPassage = buildBadPassage(coords, 0, 2, { problem: 'zu viel Zig-Zag' });
+  const blockedPassage = buildBadPassage(coords, 1, 3, {
+    problem: 'Schieben', effect: 'avoid', confidence: 'observed',
+  });
+  assert.equal(defaultPassage.effect, 'penalty');
+  assert.equal(blockedPassage.effect, 'avoid');
+  assert.equal(blockedPassage.confidence, 'observed');
+});
+
 test('feedbackFilename: includes a unique local timestamp and safe route name', () => {
   const filename = feedbackFilename(
     'Nord / Runde',

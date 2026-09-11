@@ -21,7 +21,7 @@ export function buildRoundTripBody(
     options,
     preference: 'recommended',
     custom_model: customModel,
-    extra_info: ['surface'],
+    extra_info: ['surface', 'waytype'],
     elevation: true,
     instructions: false,
   };
@@ -38,7 +38,7 @@ export function buildWaypointRouteBody(
     coordinates: waypoints.map(([lat, lon]) => [lon, lat]),
     preference: 'recommended',
     custom_model: customModel,
-    extra_info: ['surface'],
+    extra_info: ['surface', 'waytype'],
     elevation: true,
     instructions: false,
   };
@@ -60,6 +60,8 @@ export function parseRoundTrip(geojson) {
     distanceM: props.summary?.distance ?? 0,
     ascendM: Math.round(elevationGain(coords)),
     surfaceSegments: props.extras?.surface?.values ?? [],
+    waytypeSegments: props.extras?.waytype?.values ?? [],
+    elevationAvailable: feature.geometry.coordinates.every((point) => Number.isFinite(point[2])),
   };
 }
 
@@ -207,4 +209,38 @@ export async function snapWaypoints(
     );
   }
   return snapped;
+}
+
+export function buildMatchBody(routes) {
+  return {
+    features: {
+      type: 'FeatureCollection',
+      features: routes.map((coords) => ({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: coords.map(([lat, lon]) => [lon, lat]),
+        },
+      })),
+    },
+  };
+}
+
+export async function matchRoutes(
+  routes,
+  { key, requiresKey = ORS_REQUIRES_KEY, fetchImpl = fetch } = {},
+) {
+  if (!Array.isArray(routes) || !routes.length) return { edgeIds: [], graphTimestamp: null };
+  if (requiresKey && !key) throw new Error('ORS-API-Key fehlt (einmalig eingeben)');
+  const headers = { 'Content-Type': 'application/json' };
+  if (key) headers.Authorization = key;
+  const response = await fetchImpl(`${ORS_BASE}/v2/match/${ORS_PROFILE}`, {
+    method: 'POST', headers, body: JSON.stringify(buildMatchBody(routes)),
+  });
+  if (!response.ok) throw new Error(`ORS-Matching fehlgeschlagen (${response.status})`);
+  const body = await response.json();
+  if (!Array.isArray(body.edge_ids) || body.edge_ids.length !== routes.length) {
+    throw new Error('ORS-Matching lieferte eine unvollständige Antwort');
+  }
+  return { edgeIds: body.edge_ids, graphTimestamp: body.graph_timestamp ?? null };
 }
