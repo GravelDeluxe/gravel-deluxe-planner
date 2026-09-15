@@ -11,6 +11,16 @@ export function haversineM([lat1, lon1], [lat2, lon2]) {
   return 2 * EARTH_RADIUS_KM * 1000 * Math.asin(Math.sqrt(a));
 }
 
+export function bearingDegrees([lat1, lon1], [lat2, lon2]) {
+  const phi1 = toRad(lat1);
+  const phi2 = toRad(lat2);
+  const deltaLon = toRad(lon2 - lon1);
+  const y = Math.sin(deltaLon) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2)
+    - Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLon);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
 export function destinationPoint([lat, lon], distanceKm, bearingDeg) {
   const delta = distanceKm / EARTH_RADIUS_KM;
   const theta = toRad(bearingDeg);

@@ -33,3 +33,13 @@ export function buildHighlightWaypoints(start, routeCoords, highlights, anchorCo
   items.sort((a, b) => a.index - b.index || a.order - b.order);
   return [start.slice(0, 2), ...items.map((item) => item.point), start.slice(0, 2)];
 }
+
+export function buildGuidedWaypoints(start, routeCoords, shapePoints = [], highlights = []) {
+  const anchors = shapePoints.length > 0 ? 0 : 4;
+  return buildHighlightWaypoints(
+    start,
+    routeCoords,
+    [...shapePoints, ...highlights],
+    anchors,
+  );
+}

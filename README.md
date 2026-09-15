@@ -212,7 +212,7 @@ Grenze; weniger bleibt ausdrücklich gut. Beim Gravelanteil gilt nur die untere
 Grenze. Echte Bandbreiten gelten für Höhenmeterdichte und Anstiegslage.
 Abweichungen erhöhen den Kandidatenscore nachvollziehbar, bleiben aber weiche
 Hinweise. Oberfläche, Hauptstraße und Gravelanteil stammen aktuell aus den
-23 ausreichend tracktreu auf dem lokalen ORS rekonstruierten Referenzen. Eine
+26 ausreichend tracktreu auf dem lokalen ORS rekonstruierten Referenzen. Eine
 Leave-one-out-Auswertung prüft jede gute Route gegen einen Rahmen, der ohne
 genau diese Route berechnet wurde.
 

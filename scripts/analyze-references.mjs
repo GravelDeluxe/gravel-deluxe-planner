@@ -42,7 +42,10 @@ for (const filename of names) {
       if (error.code !== 'ENOENT') throw error;
     }
     const route = analyzeReferenceRoute({ ...parsed, source: filename });
+    const matchingKnown = Object.hasOwn(referenceMatches?.routes ?? {}, filename);
     route.edgeIds = referenceMatches?.routes?.[filename] ?? [];
+    route.matchingStatus = !matchingKnown
+      ? 'pending' : route.edgeIds.length > 0 ? 'matched' : 'outside-graph';
     const enrichment = referenceEnrichment?.routes?.[filename];
     if (enrichment?.accepted) route.structure = enrichment.structure;
     route.metadata = normalizeReferenceMetadata(sourceMetadata, route);
@@ -78,8 +81,9 @@ const model = buildReferenceModel(analyzed, feedbackItems);
 model.matchingGraphTimestamp = referenceMatches?.graphTimestamp ?? null;
 model.quality.mapMatched = Boolean(referenceMatches?.graphTimestamp);
 model.quality.matching = model.quality.mapMatched ? 'ors-edge+geometry-proximity' : 'geometry-proximity';
-model.summary.matchedRoutes = analyzed.filter((route) => route.edgeIds.length > 0).length;
-model.summary.unmatchedRoutes = analyzed.length - model.summary.matchedRoutes;
+model.summary.matchedRoutes = analyzed.filter((route) => route.matchingStatus === 'matched').length;
+model.summary.unmatchedRoutes = analyzed.filter((route) => route.matchingStatus === 'outside-graph').length;
+model.summary.pendingRoutes = analyzed.filter((route) => route.matchingStatus === 'pending').length;
 model.summary.enrichedRoutes = analyzed.filter((route) => referenceEnrichment?.routes?.[route.source]?.accepted).length;
 model.summary.gpxFiles = names.filter((name) => name.toLowerCase().endsWith('.gpx')).length;
 model.summary.duplicates = duplicates.length;
@@ -103,11 +107,14 @@ console.log(`Feedback: ${model.summary.feedbackFiles} Dateien, ${model.summary.b
 console.log(`Korridore: ${model.summary.goodCells} gut, ${model.summary.badCells} schlecht`);
 console.log(`Aufbaurahmen: ${Object.keys(model.structureFrame.dimensions).length} gelernte Kennzahlen`);
 console.log(`Leave-one-out: Median ${model.structureValidation.medianAdjustment.toFixed(2)}, P80 ${model.structureValidation.p80Adjustment.toFixed(2)}`);
-console.log(`Graphabdeckung: ${model.summary.matchedRoutes} mit ORS-Kanten, ${model.summary.unmatchedRoutes} außerhalb`);
-for (const route of analyzed.filter((candidate) => candidate.edgeIds.length === 0)) {
+console.log(`Graphabdeckung: ${model.summary.matchedRoutes} mit ORS-Kanten, ${model.summary.unmatchedRoutes} außerhalb, ${model.summary.pendingRoutes} noch nicht geprüft`);
+for (const route of analyzed.filter((candidate) => candidate.matchingStatus === 'outside-graph')) {
   const centerLat = (route.bounds[0][0] + route.bounds[1][0]) / 2;
   const centerLon = (route.bounds[0][1] + route.bounds[1][1]) / 2;
   console.log(`  außerhalb: ${route.source} (${centerLat.toFixed(4)}, ${centerLon.toFixed(4)})`);
+}
+for (const route of analyzed.filter((candidate) => candidate.matchingStatus === 'pending')) {
+  console.log(`  ausstehend: ${route.source}`);
 }
 console.log(`Angereicherte Referenzen: ${model.summary.enrichedRoutes}`);
 console.log(`Ausgabe: ${path.relative(process.cwd(), outputFile)}`);

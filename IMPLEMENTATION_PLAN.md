@@ -25,7 +25,7 @@ bleiben unten als fachliche Spezifikation erhalten; sie sind keine Aussage
 | --- | --- | --- |
 | Routing | BRouter, ORS, native und gerichtete Runden, Highlights, drei Vorschläge | systematischer Qualitätsnachweis, DACH-Abdeckung |
 | Ranking | Distanz, Höhenmeter, Richtung, Steigung, Wiese/Erde, Referenzkorridore, Fahrfluss | Oberflächenkontinuität, Hauptstraßenanteil, kontextabhängige Parallelwege, Anstiegsqualität, erster Anstieg |
-| Referenzen | 37 GPX-Dateien, 35 eindeutige Routen, 4 Feedbackdateien mit 14 Passagen, Map-Matching, Qualitätsanreicherung, optionale Metadaten und Gegenbeispiele | regionsübergreifende Graphabdeckung, separate Testsammlung, administrativer Import |
+| Referenzen | 38 GPX-Dateien, 36 eindeutige Routen, 4 Feedbackdateien mit 14 Passagen, Map-Matching, Qualitätsanreicherung, optionale Metadaten und Gegenbeispiele | regionsübergreifende Graphabdeckung, separate Testsammlung, administrativer Import |
 | App | Karte, Qualitätsreport, Feedback, lokale Speicherung, GPX-Export sowie editierbarer GPX-/Feedbackimport | visuelle Desktop-/Mobilabnahme und Kalibrierung der neuen Kennzahlen |
 | Betrieb | lokaler Docker-Stack, Smoke-Tests, GitLab-CI, Portainer-Vorlage | bestätigter GitHub→GitLab-Veröffentlichungsweg, Zielserverabnahme, Datenupdates und Monitoring |
 
@@ -144,7 +144,7 @@ Abhängig von M2/M3; keine vorgezogene ML-Implementierung.
 - [x] Region, Saison, Fahrradtyp, Bewertung, Notizen,
   Distanz-/Höhenmeterklasse sowie Gegenbeispiele über optionale
   `.gpx.meta.json`-Dateien unterstützen.
-- [x] Regelbasierte Zielbereiche und Gewichtungen aus den aktuell 35
+- [x] Regelbasierte Zielbereiche und Gewichtungen aus den aktuell 36
   eindeutigen guten Referenzrouten ableiten und per Leave-one-out prüfen.
 - [x] Sammlung auf 20–50 vielfältige Routen erweitern.
 - [ ] Gegen eine separate, bei der Ableitung nicht verwendete Testsammlung

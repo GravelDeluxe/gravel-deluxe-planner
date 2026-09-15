@@ -12,8 +12,8 @@ Stand: 2026-09-11
 - Referenz-GPX unterstützen optionale Metadaten für Region, Saison,
   Fahrradtyp, Bewertung, Notizen, Klassen und Gegenbeispiele. Das Modell weist
   robuste Distanz-/Höhenmeterbereiche und die Datensatzabdeckung aus.
-- 28 der 35 eindeutigen Referenzen sind per ORS-HMM auf 13.924 eindeutige
-  Kanten des aktuellen Baden-Württemberg-Graphs gemappt. Sieben Routen in den
+- 29 der 36 eindeutigen Referenzen sind per ORS-HMM auf Kanten des aktuellen
+  Baden-Württemberg-Graphs gemappt. Sieben Routen in den
   Haßbergen, Tirol, der Toskana und im Trentino bleiben mangels Graphabdeckung
   im geometrischen Rückfallmodell. Der Graph-Zeitstempel verhindert Vergleiche
   mit veralteten internen Kanten-IDs.
@@ -22,12 +22,12 @@ Stand: 2026-09-11
   Das bewertungsgewichtete 20.–80.-Perzentil liefert sinnvolle Band-, Ober-
   oder Untergrenzen; bessere Werte werden nicht bestraft. Abweichungen
   erscheinen je Kennzahl im Routenreport.
-- 23 vom Baden-Württemberg-Graph ausreichend tracktreu rekonstruierte
+- 26 vom Baden-Württemberg-Graph ausreichend tracktreu rekonstruierte
   Referenzen wurden angereichert. Damit lernt der Rahmen jetzt auch
   Oberflächenwechsel, Hauptstraßen- und Gravelanteil aus denselben
   Qualitätsfunktionen wie das Kandidatenranking.
 - Eine Leave-one-out-Prüfung berechnet für jede Referenz einen Rahmen ohne
-  diese Route. Aktuell: mediane Abweichung 0,27, 80. Perzentil 0,66.
+  diese Route. Aktuell: mediane Abweichung 0,26, 80. Perzentil 0,89.
 - M3 umgesetzt: Feedback unterscheidet Rankingstrafe und ausdrücklich
   beobachtete Sperrpassage; räumliches Matching verwendet einen schmalen
   Geometriekorridor und das Referenzmodell wird auf das Suchgebiet begrenzt.
@@ -53,8 +53,8 @@ Stand: 2026-09-11
   DOM-/Leaflet-Adaptern. Beide Compose-Dateien und Referenzmodell geprüft.
 - Portainer nutzt einen absoluten Host-Pfad für die ORS-Konfiguration;
   CI prüft Compose und das reproduzierbare Referenzmodell.
-- Referenzmodell: 35 eindeutige gute Routen aus 37 GPX-Dateien, 4
-  Feedbackdateien mit 14 Passagen; 19.085 gute und 162 schlechte Rasterzellen.
+- Referenzmodell: 36 eindeutige gute Routen aus 38 GPX-Dateien, 4
+  Feedbackdateien mit 14 Passagen; 19.198 gute und 162 schlechte Rasterzellen.
 - Reale BRouter- und ORS-Smoke-Tests am 10.09.2026 erfolgreich; ORS liefert
   Oberflächendaten. Ein Graph-Neubau ist derzeit keine offene Voraussetzung.
 

@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { haversineM, destinationPoint, ringWaypoints, nearestOnPath } from '../js/geo.js';
+import {
+  haversineM,
+  bearingDegrees,
+  destinationPoint,
+  ringWaypoints,
+  nearestOnPath,
+} from '../js/geo.js';
 
 test('haversineM: 1 degree latitude is ~111.19 km', () => {
   const d = haversineM([50, 8], [51, 8]);
@@ -17,6 +23,11 @@ test('destinationPoint: 1 km east keeps latitude', () => {
   const [lat, lon] = destinationPoint([50, 8], 1, 90);
   assert.ok(Math.abs(lat - 50) < 0.0005, `lat ${lat}`);
   assert.ok(lon > 8.01 && lon < 8.02, `lon ${lon}`);
+});
+
+test('bearingDegrees points from the start towards western highlights', () => {
+  const bearing = bearingDegrees([49.2443, 9.1131], [49.2148, 8.8642]);
+  assert.ok(bearing > 250 && bearing < 270, `bearing ${bearing}`);
 });
 
 test('ringWaypoints: n points, all radiusKm from center', () => {

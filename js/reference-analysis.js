@@ -114,6 +114,11 @@ export function analyzeReferenceRoute({ name, coords, source, elevationAvailable
       [Math.min(...lats), Math.min(...lons)],
       [Math.max(...lats), Math.max(...lons)],
     ],
+    // Kompakte, geordnete Form der guten Tour. Sie erlaubt der App, passende
+    // Referenzen als echte Kandidatenführung zu verwenden, statt sie erst nach
+    // der Routenerzeugung nur zu bewerten.
+    guidePoints: sampleLine(cleaned, Math.max(250, distanceM / 32))
+      .map(({ point }) => point.slice(0, 2)),
     cells: uniqueRouteCells(cleaned),
     fingerprint: routeFingerprint(cleaned),
   };

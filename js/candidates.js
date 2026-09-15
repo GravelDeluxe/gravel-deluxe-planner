@@ -23,6 +23,10 @@ export const DIRECTION_BEARINGS = Object.freeze({
   NW: 315,
 });
 
+// Der höchste Wert der guten Referenzen liegt derzeit unter 14 %. Oberhalb
+// von 15 % ist eine Runde praktisch ein Hin-und-zurück-Korridor ("Tunnel").
+export const MAX_LOOP_REPEATED_SHARE = 0.15;
+
 function angularDistance(a, b) {
   return Math.abs(((a - b + 540) % 360) - 180);
 }
@@ -104,6 +108,10 @@ export function rankRoundTripCandidates(
       const structure = analyzeTourStructure(candidate.route);
       const learnedStructure = scoreTourStructure(structure, referenceModel?.structureFrame);
       const firstClimb = firstClimbAssessment(quality.terrain, firstClimbMode);
+      const loopQuality = {
+        repeatedAllowed: quality.repeated.share <= MAX_LOOP_REPEATED_SHARE,
+        maximumRepeatedShare: MAX_LOOP_REPEATED_SHARE,
+      };
       const score =
         relativeDeviation(distKm, minKm, maxKm) * 2
         + relativeDeviation(ascendM, minHm, maxHm)
@@ -129,10 +137,13 @@ export function rankRoundTripCandidates(
         structure,
         learnedStructure,
         firstClimb,
-        inRange: distanceInRange && ascentInRange && constraints.allowed && firstClimb.allowed,
+        loopQuality,
+        inRange: distanceInRange && ascentInRange && constraints.allowed
+          && firstClimb.allowed && loopQuality.repeatedAllowed,
         score,
       };
     })
+    .filter((candidate) => candidate.loopQuality.repeatedAllowed)
     .sort((a, b) => {
       if (firstClimbMode === 'required' && a.firstClimb.allowed !== b.firstClimb.allowed) {
         return Number(b.firstClimb.allowed) - Number(a.firstClimb.allowed);

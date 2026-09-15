@@ -75,11 +75,17 @@ test('routeDirection: uses route center for closed loops', () => {
 test('rankRoundTripCandidates: requested direction influences ranking', () => {
   const west = {
     ...candidate(40, 500, 'west'),
-    route: { distanceM: 40000, ascendM: 500, coords: [[49, 9], [49, 8.8], [49, 9]] },
+    route: {
+      distanceM: 40000, ascendM: 500,
+      coords: [[49, 9], [49.1, 8.8], [48.9, 8.8], [49, 9]],
+    },
   };
   const east = {
     ...candidate(40, 500, 'east'),
-    route: { distanceM: 40000, ascendM: 500, coords: [[49, 9], [49, 9.2], [49, 9]] },
+    route: {
+      distanceM: 40000, ascendM: 500,
+      coords: [[49, 9], [49.1, 9.2], [48.9, 9.2], [49, 9]],
+    },
   };
   const ranked = rankRoundTripCandidates(
     [west, east],
@@ -208,4 +214,28 @@ test('rankRoundTripCandidates: keeps distinct alternatives ahead of a near dupli
     { minKm: 0.5, maxKm: 2, minHm: 0, maxHm: 50, limit: 2 },
   );
   assert.deepEqual(ranked.map((candidate) => candidate.id), ['best', 'alternative']);
+});
+
+test('rankRoundTripCandidates rejects tunnel-like loops', () => {
+  const tunnel = {
+    id: 'tunnel',
+    route: {
+      distanceM: 4500,
+      ascendM: 20,
+      coords: [[49, 9, 100], [49, 9.02, 110], [49, 9, 100]],
+    },
+  };
+  const loop = {
+    id: 'loop',
+    route: {
+      distanceM: 4500,
+      ascendM: 20,
+      coords: [[49, 9, 100], [49.01, 9.01, 110], [49, 9.02, 105], [49, 9, 100]],
+    },
+  };
+  const ranked = rankRoundTripCandidates(
+    [tunnel, loop],
+    { minKm: 3, maxKm: 6, minHm: 0, maxHm: 100 },
+  );
+  assert.deepEqual(ranked.map((candidate) => candidate.id), ['loop']);
 });

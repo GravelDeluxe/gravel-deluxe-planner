@@ -10,7 +10,7 @@ import {
 } from './ors.js';
 import { DIRECTION_BEARINGS, rankRoundTripCandidates } from './candidates.js';
 import { buildGravelDeluxeCustomModel } from './gravel-deluxe.js';
-import { buildHighlightWaypoints } from './highlights.js';
+import { buildGuidedWaypoints, buildHighlightWaypoints } from './highlights.js';
 import { generateCandidates, generateDirectionalCandidates } from './loop.js';
 import { searchPlace } from './search.js';
 import { listRoutes, saveRoute, deleteRoute } from './storage.js';
@@ -27,6 +27,8 @@ import { buildRouteDisplaySegments, directionArrowPoints } from './route-display
 import { analyzeRouteQuality } from './route-quality.js';
 import { createReliableTileLayer } from './tiles.js';
 import { parseImportedFile } from './route-import.js';
+import { bearingDegrees } from './geo.js';
+import { selectReferenceGuides } from './reference-guidance.js';
 
 const map = L.map('map', { zoomControl: false }).setView(MAP_START, MAP_START_ZOOM);
 const tileLayer = createReliableTileLayer(L, TILE_URL, {
@@ -614,7 +616,7 @@ function renderSuggestions(activeIndex = -1) {
   el('suggestions').innerHTML = state.candidates
     .map(
       (c, i) => `<button type="button" class="suggestion${i === activeIndex ? ' active' : ''}" data-i="${i}">
-        <strong>${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm</strong>
+        <strong>${c.referenceSource ? 'Referenz · ' : ''}${c.direction ? `${c.direction} · ` : ''}${(c.route.distanceM / 1000).toFixed(0)} km · ${Math.round(c.route.ascendM)} hm</strong>
         <small>Oberfläche ${((c.quality.distanceM - c.quality.unknownSurfaceM) / (c.quality.distanceM || 1) * 100).toFixed(0)} % bekannt · ${c.quality.surfaceChanges} Wechsel · ${(c.quality.repeated.share * 100).toFixed(0)} % doppelt</small>
         <small>Referenzwege ${Math.round(c.reference.goodAffinity * 100)} % · Aufbau ${c.learnedStructure.adjustment.toFixed(2)} · Feedback ${(c.reference.badCoverage * 100).toFixed(1)} % · Score ${c.score.toFixed(2)}</small>
         ${c.inRange ? '' : `<small class="warning">Außerhalb: ${[!c.distanceInRange && 'km', !c.ascentInRange && 'hm', !c.constraints?.surfaceAllowed && (c.constraints?.surfaceStatus === 'unknown' ? 'Oberfläche unbekannt' : 'Wiese/Erde'), !c.constraints?.slopeAllowed && `Steigung ${c.constraints.maximumGrade.toFixed(1)} %`, !c.firstClimb?.allowed && 'erster Anstieg'].filter(Boolean).join(' + ')}</small>`}
@@ -790,8 +792,15 @@ async function roundTripCandidates(
   );
   let valid = results.filter(Boolean);
   if (guidedShape) {
+    const guidancePoints = [...shapePoints, ...highlights];
+    const guidanceCenter = guidancePoints.length
+      ? guidancePoints.reduce(
+        (sum, point) => [sum[0] + point[0], sum[1] + point[1]],
+        [0, 0],
+      ).map((sum) => sum / guidancePoints.length)
+      : null;
     const bearingDeg = direction === 'any'
-      ? 0
+      ? (guidanceCenter ? bearingDegrees(start, guidanceCenter) : 0)
       : DIRECTION_BEARINGS[direction];
     try {
       const guided = await generateDirectionalCandidates(
@@ -809,9 +818,9 @@ async function roundTripCandidates(
         guided.map(async (candidate) => {
           let route = candidate.route;
           if (highlights.length || shapePoints.length) {
-            const viaPoints = buildHighlightWaypoints(
+            const viaPoints = buildGuidedWaypoints(
               start, templateCoords?.length ? templateCoords : route.coords,
-              [...shapePoints, ...highlights], 0,
+              shapePoints, highlights,
             );
             route = await routeThroughSnappedWaypoints(viaPoints);
           }
@@ -827,6 +836,33 @@ async function roundTripCandidates(
         .filter((result) => result.status === 'fulfilled')
         .map((result) => result.value);
       firstError ??= guidedResults.find((result) => result.status === 'rejected')?.reason;
+
+      if (highlights.length) {
+        const referenceGuides = selectReferenceGuides(
+          fullReferenceModel?.routes,
+          start,
+          highlights,
+          { minKm, maxKm: expandedMaxKm },
+        );
+        const referenceResults = await Promise.allSettled(referenceGuides.map(async (guide) => {
+          const viaPoints = buildGuidedWaypoints(
+            start,
+            guide.waypoints,
+            guide.waypoints.slice(1, -1),
+            highlights,
+          );
+          const route = await routeThroughSnappedWaypoints(viaPoints);
+          return {
+            route: { ...route, profile: 'ors-gravel-deluxe' },
+            waypoints: [[route.coords[0][0], route.coords[0][1]]],
+            referenceSource: guide.source,
+          };
+        }));
+        valid.push(...referenceResults
+          .filter((result) => result.status === 'fulfilled')
+          .map((result) => result.value));
+        firstError ??= referenceResults.find((result) => result.status === 'rejected')?.reason;
+      }
     } catch (guidedError) {
       firstError = guidedError;
     }
@@ -857,9 +893,9 @@ async function roundTripCandidates(
         fallback.map(async (candidate) => {
           let route = candidate.route;
           if (highlights.length || shapePoints.length) {
-            const viaPoints = buildHighlightWaypoints(
+            const viaPoints = buildGuidedWaypoints(
               start, templateCoords?.length ? templateCoords : route.coords,
-              [...shapePoints, ...highlights], 0,
+              shapePoints, highlights,
             );
             route = await routeThroughSnappedWaypoints(viaPoints);
           }
